@@ -1,103 +1,167 @@
+'use client';
+
+import { useState } from 'react';
 import Image from "next/image";
+import AuthModal from '../components/AuthModal';
+import Dashboard from '../components/Dashboard';
+import CreateStorybook from '../components/CreateStorybook';
+
+interface FormData {
+  text: string;
+  images: File[];
+  textFiles: File[];
+  tone: string;
+}
+
+interface ImageWithCaption {
+  file: File;
+  preview: string;
+  caption: string;
+}
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [user, setUser] = useState<{name: string; email: string} | null>(null);
+  const [projects, setProjects] = useState<{id: string; name: string; createdAt: string; data: FormData}[]>([]);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<'dashboard' | 'create'>('dashboard');
+  const [editingProject, setEditingProject] = useState<{id: string; name: string; createdAt: string; data: FormData} | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleLogin = async (email: string, password: string) => {
+    // Simulate login - in real app, this would call an API
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setUser({ name: email.split('@')[0], email });
+    setIsAuthenticated(true);
+  };
+
+  const handleRegister = async (email: string, password: string, name: string) => {
+    // Simulate registration - in real app, this would call an API
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setUser({ name, email });
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUser(null);
+    setProjects([]);
+    setCurrentProjectId(null);
+    setEditingProject(null);
+    setCurrentView('dashboard');
+  };
+
+  const saveProject = (projectData: FormData) => {
+    const projectName = prompt('Enter a name for your storybook:');
+    if (!projectName) return;
+
+    if (editingProject) {
+      // Update existing project
+      setProjects(prev => prev.map(p => 
+        p.id === editingProject.id 
+          ? { ...p, name: projectName, data: projectData }
+          : p
+      ));
+      setEditingProject(null);
+    } else {
+      // Create new project
+      const newProject = {
+        id: Date.now().toString(),
+        name: projectName,
+        createdAt: new Date().toISOString(),
+        data: projectData
+      };
+      setProjects(prev => [...prev, newProject]);
+    }
+    
+    setCurrentView('dashboard');
+    alert('Project saved successfully!');
+  };
+
+  const editProject = (project: {id: string; name: string; createdAt: string; data: FormData}) => {
+    setEditingProject(project);
+    setCurrentView('create');
+  };
+
+  const deleteProject = (projectId: string) => {
+    if (confirm('Are you sure you want to delete this project?')) {
+      setProjects(prev => prev.filter(p => p.id !== projectId));
+      if (editingProject?.id === projectId) {
+        setEditingProject(null);
+        setCurrentView('dashboard');
+      }
+    }
+  };
+
+  const createNewStorybook = () => {
+    setEditingProject(null);
+    setCurrentView('create');
+  };
+
+  const backToDashboard = () => {
+    setEditingProject(null);
+    setCurrentView('dashboard');
+  };
+
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-100 flex items-center justify-center px-4">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              JourneyBook
+            </h1>
+            <p className="text-lg text-gray-600 mb-8">
+              Document your pregnancy journey with photos and memories
+            </p>
+            <div className="space-y-4">
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="w-full bg-pink-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-pink-700 transition-colors"
+              >
+                Get Started
+              </button>
+              <p className="text-sm text-gray-500">
+                Create beautiful pregnancy storybooks with personalized narratives
+              </p>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onLogin={handleLogin}
+          onRegister={handleRegister}
+        />
+      </div>
+    );
+  }
+
+  if (currentView === 'dashboard') {
+    return (
+      <Dashboard
+        projects={projects}
+        onCreateNew={createNewStorybook}
+        onEditProject={editProject}
+        onDeleteProject={deleteProject}
+        user={user}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  if (currentView === 'create') {
+    return (
+      <CreateStorybook
+        onBackToDashboard={backToDashboard}
+        onSaveProject={saveProject}
+        initialData={editingProject?.data}
+        projectName={editingProject?.name}
+      />
+    );
+  }
+
+  return null;
+
 }
