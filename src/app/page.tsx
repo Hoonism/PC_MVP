@@ -1,10 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from "next/image";
 import AuthModal from '../components/AuthModal';
 import Dashboard from '../components/Dashboard';
 import CreateStorybook from '../components/CreateStorybook';
+import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { firestoreService, StorybookData } from '../lib/firestore';
+import { getBackgroundClass } from '../lib/theme';
 
 interface FormData {
   text: string;
@@ -19,73 +23,119 @@ interface ImageWithCaption {
   caption: string;
 }
 
-export default function Home() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+function AppContent() {
+  const { user, logout } = useAuth();
+  const { theme } = useTheme();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [user, setUser] = useState<{name: string; email: string} | null>(null);
-  const [projects, setProjects] = useState<{id: string; name: string; createdAt: string; data: FormData}[]>([]);
+  const [projects, setProjects] = useState<StorybookData[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'dashboard' | 'create'>('dashboard');
-  const [editingProject, setEditingProject] = useState<{id: string; name: string; createdAt: string; data: FormData} | null>(null);
+  const [editingProject, setEditingProject] = useState<StorybookData | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (email: string, password: string) => {
-    // Simulate login - in real app, this would call an API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setUser({ name: email.split('@')[0], email });
-    setIsAuthenticated(true);
+  // Load projects from Firestore
+  const loadProjects = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const userStorybooks = await firestoreService.getUserStorybooks(user.uid);
+      console.log('Loaded storybooks:', userStorybooks); // Debug log
+      setProjects(userStorybooks);
+    } catch (error) {
+      console.error('Error loading projects:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRegister = async (email: string, password: string, name: string) => {
-    // Simulate registration - in real app, this would call an API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setUser({ name, email });
-    setIsAuthenticated(true);
-  };
+  // Load projects when user changes
+  useEffect(() => {
+    if (user) {
+      loadProjects();
+    } else {
+      setProjects([]);
+    }
+  }, [user]);
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
+  const handleLogout = async () => {
+    await logout();
     setProjects([]);
     setCurrentProjectId(null);
-    setEditingProject(null);
     setCurrentView('dashboard');
+    setEditingProject(null);
   };
 
-  const saveProject = (projectData: FormData) => {
-    const projectName = prompt('Enter a name for your storybook:');
-    if (!projectName) return;
+  const saveProject = async (projectData: FormData, generatedText: string = '', captions: string[] = [], projectName?: string) => {
+    if (!projectName || !user) return;
 
-    if (editingProject) {
-      // Update existing project
-      setProjects(prev => prev.map(p => 
-        p.id === editingProject.id 
-          ? { ...p, name: projectName, data: projectData }
-          : p
-      ));
+    setLoading(true);
+    try {
+      if (editingProject && editingProject.id) {
+        // Update existing project
+        await firestoreService.updateStorybook(
+          editingProject.id,
+          user.uid,
+          projectName,
+          {
+            text: projectData.text,
+            tone: projectData.tone,
+            images: projectData.images,
+            textFiles: projectData.textFiles,
+            captions
+          },
+          generatedText
+        );
+      } else {
+        // Create new project
+        await firestoreService.saveStorybook(
+          user.uid,
+          projectName,
+          {
+            text: projectData.text,
+            tone: projectData.tone,
+            images: projectData.images,
+            textFiles: projectData.textFiles,
+            captions
+          },
+          generatedText
+        );
+      }
+      
+      // Refresh projects list and navigate to dashboard
+      await loadProjects();
       setEditingProject(null);
-    } else {
-      // Create new project
-      const newProject = {
-        id: Date.now().toString(),
-        name: projectName,
-        createdAt: new Date().toISOString(),
-        data: projectData
-      };
-      setProjects(prev => [...prev, newProject]);
+      setCurrentView('dashboard');
+    } catch (error) {
+      console.error('Error saving project:', error);
+      alert('Error saving project. Please try again.');
+    } finally {
+      setLoading(false);
     }
     
-    setCurrentView('dashboard');
-    alert('Project saved successfully!');
+    // Force a small delay to ensure state updates
+    setTimeout(() => {
+      console.log('Save completed, projects state:', projects); // Debug log
+    }, 100);
   };
 
-  const editProject = (project: {id: string; name: string; createdAt: string; data: FormData}) => {
+  const editProject = (project: StorybookData) => {
     setEditingProject(project);
     setCurrentView('create');
   };
 
-  const deleteProject = (projectId: string) => {
+  const deleteProject = async (projectId: string) => {
     if (confirm('Are you sure you want to delete this project?')) {
-      setProjects(prev => prev.filter(p => p.id !== projectId));
+      setLoading(true);
+      try {
+        await firestoreService.deleteStorybook(projectId);
+        await loadProjects(); // Refresh the list
+      } catch (error) {
+        console.error('Error deleting project:', error);
+        alert('Error deleting project. Please try again.');
+      } finally {
+        setLoading(false);
+      }
       if (editingProject?.id === projectId) {
         setEditingProject(null);
         setCurrentView('dashboard');
@@ -103,37 +153,11 @@ export default function Home() {
     setCurrentView('dashboard');
   };
 
-
-  if (!isAuthenticated) {
+  // Authentication check
+  if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-100 flex items-center justify-center px-4">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              JourneyBook
-            </h1>
-            <p className="text-lg text-gray-600 mb-8">
-              Document your pregnancy journey with photos and memories
-            </p>
-            <div className="space-y-4">
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="w-full bg-pink-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-pink-700 transition-colors"
-              >
-                Get Started
-              </button>
-              <p className="text-sm text-gray-500">
-                Create beautiful pregnancy storybooks with personalized narratives
-              </p>
-            </div>
-          </div>
-        </div>
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onLogin={handleLogin}
-          onRegister={handleRegister}
-        />
+      <div className={`min-h-screen ${getBackgroundClass(theme)}`}>
+        <AuthModal isOpen={true} onClose={() => {}} />
       </div>
     );
   }
@@ -145,7 +169,10 @@ export default function Home() {
         onCreateNew={createNewStorybook}
         onEditProject={editProject}
         onDeleteProject={deleteProject}
-        user={user}
+        user={{ 
+          name: user.displayName || user.email?.split('@')[0] || 'User', 
+          email: user.email || '' 
+        }}
         onLogout={handleLogout}
       />
     );
@@ -156,12 +183,15 @@ export default function Home() {
       <CreateStorybook
         onBackToDashboard={backToDashboard}
         onSaveProject={saveProject}
-        initialData={editingProject?.data}
+        initialData={editingProject || undefined}
         projectName={editingProject?.name}
       />
     );
   }
 
   return null;
+}
 
+export default function Home() {
+  return <AppContent />;
 }

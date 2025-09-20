@@ -1,20 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-
-interface Project {
-  id: string;
-  name: string;
-  createdAt: string;
-  data: any;
-  imageCount?: number;
-  tone?: string;
-}
+import { StorybookData } from '../lib/firestore';
+import { useTheme } from '../contexts/ThemeContext';
+import { getBackgroundClass, getCardBackgroundClass, getHeadingClass, getBodyClass, getButtonClass } from '../lib/theme';
+import ThemeToggle from './ThemeToggle';
 
 interface DashboardProps {
-  projects: Project[];
+  projects: StorybookData[];
   onCreateNew: () => void;
-  onEditProject: (project: Project) => void;
+  onEditProject: (project: StorybookData) => void;
   onDeleteProject: (projectId: string) => void;
   user: { name: string; email: string } | null;
   onLogout: () => void;
@@ -28,8 +23,11 @@ export default function Dashboard({
   user, 
   onLogout 
 }: DashboardProps) {
+  const { theme } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'date'>('date');
+  
+  console.log('Dashboard received projects:', projects); // Debug log
 
   const filteredProjects = projects
     .filter(project => 
@@ -39,11 +37,14 @@ export default function Dashboard({
       if (sortBy === 'name') {
         return a.name.localeCompare(b.name);
       }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt as any);
+      const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt as any);
+      return bTime.getTime() - aTime.getTime();
     });
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (timestamp: any) => {
+    const date = timestamp?.toDate?.() || new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -51,29 +52,40 @@ export default function Dashboard({
   };
 
   const getToneColor = (tone: string) => {
-    const colors = {
-      sweet: 'bg-pink-100 text-pink-800',
-      humorous: 'bg-yellow-100 text-yellow-800',
-      journalistic: 'bg-blue-100 text-blue-800',
-      poetic: 'bg-purple-100 text-purple-800'
-    };
-    return colors[tone as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+    if (theme === 'dark') {
+      const colors = {
+        sweet: 'bg-pink-900 text-pink-200',
+        humorous: 'bg-yellow-900 text-yellow-200',
+        journalistic: 'bg-blue-900 text-blue-200',
+        poetic: 'bg-purple-900 text-purple-200'
+      };
+      return colors[tone as keyof typeof colors] || 'bg-gray-700 text-gray-200';
+    } else {
+      const colors = {
+        sweet: 'bg-pink-100 text-pink-800',
+        humorous: 'bg-yellow-100 text-yellow-800',
+        journalistic: 'bg-blue-100 text-blue-800',
+        poetic: 'bg-purple-100 text-purple-800'
+      };
+      return colors[tone as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-100">
+    <div className={`min-h-screen ${getBackgroundClass(theme)}`}>
       {/* Header */}
-      <div className="bg-white shadow-sm">
+      <div className={`${getCardBackgroundClass(theme)} border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">JourneyBook</h1>
-              <p className="text-gray-600 mt-1">Welcome back, {user?.name}!</p>
+              <h1 className={getHeadingClass('h1', theme)}>JourneyBook</h1>
+              <p className={`${getBodyClass('base', theme)} mt-1`}>Welcome back, {user?.name}!</p>
             </div>
             <div className="flex items-center space-x-4">
+              <ThemeToggle />
               <button
                 onClick={onCreateNew}
-                className="bg-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors flex items-center space-x-2"
+                className={getButtonClass('primary', theme) + " flex items-center space-x-2"}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -82,7 +94,7 @@ export default function Dashboard({
               </button>
               <button
                 onClick={onLogout}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+                className={`${theme === 'dark' ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-500 hover:bg-gray-600'} text-white px-4 py-3 rounded-lg font-medium transition-colors`}
               >
                 Logout
               </button>
@@ -94,11 +106,11 @@ export default function Dashboard({
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search and Filter Bar */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <div className={`${getCardBackgroundClass(theme)} rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-6 mb-8`}>
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="flex-1 max-w-md">
               <div className="relative">
-                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
@@ -106,7 +118,7 @@ export default function Dashboard({
                   placeholder="Search storybooks..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                  className={`pl-10 pr-4 py-2 w-full border ${theme === 'dark' ? 'border-gray-600 bg-gray-800 text-gray-100' : 'border-gray-300 bg-white text-gray-900'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 />
               </div>
             </div>
@@ -114,7 +126,7 @@ export default function Dashboard({
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'name' | 'date')}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                className={`px-3 py-2 border ${theme === 'dark' ? 'border-gray-600 bg-gray-800 text-gray-100' : 'border-gray-300 bg-white text-gray-900'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               >
                 <option value="date">Sort by Date</option>
                 <option value="name">Sort by Name</option>
@@ -126,15 +138,15 @@ export default function Dashboard({
         {/* Projects Grid */}
         {filteredProjects.length === 0 ? (
           <div className="text-center py-16">
-            <div className="bg-white rounded-2xl shadow-lg p-12 max-w-md mx-auto">
-              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className={`${getCardBackgroundClass(theme)} rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-12 max-w-md mx-auto`}>
+              <svg className={`w-16 h-16 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} mx-auto mb-4`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">No Storybooks Yet</h3>
-              <p className="text-gray-600 mb-6">Create your first pregnancy journey storybook to get started!</p>
+              <h3 className={getHeadingClass('h3', theme) + " mb-2"}>No Storybooks Yet</h3>
+              <p className={`${getBodyClass('base', theme)} mb-6`}>Create your first pregnancy journey storybook to get started!</p>
               <button
                 onClick={onCreateNew}
-                className="bg-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors"
+                className={getButtonClass('primary', theme)}
               >
                 Create Your First Storybook
               </button>
@@ -143,16 +155,16 @@ export default function Dashboard({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.map((project) => (
-              <div key={project.id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow overflow-hidden">
+              <div key={project.id} className={`${getCardBackgroundClass(theme)} rounded-lg border ${theme === 'dark' ? 'border-gray-700 hover:border-gray-600' : 'border-gray-200 hover:border-gray-300'} transition-all overflow-hidden`}>
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <h3 className="text-xl font-semibold text-gray-800 truncate flex-1 mr-2">
+                    <h3 className={`${getHeadingClass('h3', theme)} truncate flex-1 mr-2`}>
                       {project.name}
                     </h3>
                     <div className="flex space-x-1">
                       <button
                         onClick={() => onEditProject(project)}
-                        className="p-2 text-gray-400 hover:text-pink-600 transition-colors"
+                        className={`p-2 ${theme === 'dark' ? 'text-gray-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-600'} transition-colors`}
                         title="Edit"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -160,8 +172,8 @@ export default function Dashboard({
                         </svg>
                       </button>
                       <button
-                        onClick={() => onDeleteProject(project.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                        onClick={() => onDeleteProject(project.id || '')}
+                        className={`p-2 ${theme === 'dark' ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'} transition-colors`}
                         title="Delete"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -172,36 +184,36 @@ export default function Dashboard({
                   </div>
                   
                   <div className="space-y-3">
-                    <div className="flex items-center text-sm text-gray-600">
+                    <div className={`flex items-center text-sm ${getBodyClass('small', theme)}`}>
                       <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       Created {formatDate(project.createdAt)}
                     </div>
                     
-                    {project.data?.images?.length > 0 && (
-                      <div className="flex items-center text-sm text-gray-600">
+                    {project.input?.images?.length > 0 && (
+                      <div className={`flex items-center text-sm ${getBodyClass('small', theme)}`}>
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        {project.data.images.length} photo{project.data.images.length !== 1 ? 's' : ''}
+                        {project.input.images.length} photo{project.input.images.length !== 1 ? 's' : ''}
                       </div>
                     )}
                     
-                    {project.data?.tone && (
+                    {project.input?.tone && (
                       <div className="flex items-center">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getToneColor(project.data.tone)}`}>
-                          {project.data.tone.charAt(0).toUpperCase() + project.data.tone.slice(1)}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getToneColor(project.input.tone)}`}>
+                          {project.input.tone.charAt(0).toUpperCase() + project.input.tone.slice(1)}
                         </span>
                       </div>
                     )}
                   </div>
                 </div>
                 
-                <div className="px-6 py-4 bg-gray-50 border-t">
+                <div className={`px-6 py-4 ${theme === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'} border-t`}>
                   <button
                     onClick={() => onEditProject(project)}
-                    className="w-full bg-pink-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-pink-700 transition-colors"
+                    className={`w-full ${getButtonClass('primary', theme)} py-2 px-4`}
                   >
                     Continue Editing
                   </button>

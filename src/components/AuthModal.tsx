@@ -1,47 +1,59 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { getButtonClass, getInputClass, getCardClass, getHeadingClass, getBodyClass, themeStyles } from '../lib/theme';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (email: string, password: string) => void;
-  onRegister: (email: string, password: string, name: string) => void;
 }
 
-export default function AuthModal({ isOpen, onClose, onLogin, onRegister }: AuthModalProps) {
+export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [password, setPassword] = useState('');
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
+    setError('');
+    
     try {
       if (isLoginMode) {
-        await onLogin(email, password);
+        await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await onRegister(email, password, name);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        if (name.trim()) {
+          await updateProfile(userCredential.user, { displayName: name });
+        }
       }
       onClose();
+      // Reset form
       setEmail('');
       setPassword('');
       setName('');
-    } catch (error) {
-      console.error('Auth error:', error);
+    } catch (error: any) {
+      console.error('Authentication error:', error);
+      setError(error.message || 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className={`${getCardClass('base')} w-full max-w-md p-8`}>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">JourneyBook</h1>
+          <p className="text-gray-600">Your pregnancy journey, beautifully documented</p>
+        </div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-800">
             {isLoginMode ? 'Welcome Back' : 'Create Account'}
@@ -55,6 +67,12 @@ export default function AuthModal({ isOpen, onClose, onLogin, onRegister }: Auth
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {error}
+            </div>
+          )}
+          
           {!isLoginMode && (
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -117,7 +135,7 @@ export default function AuthModal({ isOpen, onClose, onLogin, onRegister }: Auth
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-pink-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-pink-700 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className={getButtonClass('primary')}
           >
             {isLoading ? 'Loading...' : (isLoginMode ? 'Sign In' : 'Create Account')}
           </button>
@@ -126,7 +144,7 @@ export default function AuthModal({ isOpen, onClose, onLogin, onRegister }: Auth
         <div className="mt-6 text-center">
           <button
             onClick={() => setIsLoginMode(!isLoginMode)}
-            className="text-pink-600 hover:text-pink-700 font-medium"
+            className="text-blue-600 hover:text-blue-700 font-medium"
           >
             {isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
           </button>

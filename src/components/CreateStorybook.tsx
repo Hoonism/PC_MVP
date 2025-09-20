@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { getButtonClass, getInputClass, getCardClass, getHeadingClass, theme, themeStyles } from '../lib/theme';
 
 interface FormData {
   text: string;
@@ -17,10 +18,12 @@ interface ImageWithCaption {
   caption: string;
 }
 
+import { StorybookData } from '../lib/firestore';
+
 interface CreateStorybookProps {
   onBackToDashboard: () => void;
-  onSaveProject: (projectData: FormData) => void;
-  initialData?: FormData;
+  onSaveProject: (projectData: FormData, generatedText?: string, captions?: string[], projectName?: string) => void;
+  initialData?: StorybookData;
   projectName?: string;
 }
 
@@ -30,11 +33,21 @@ export default function CreateStorybook({
   initialData,
   projectName 
 }: CreateStorybookProps) {
-  const [formData, setFormData] = useState<FormData>(initialData || {
-    text: '',
-    images: [],
-    textFiles: [],
-    tone: 'sweet'
+  const [formData, setFormData] = useState<FormData>(() => {
+    if (initialData) {
+      return {
+        text: initialData.input?.text || '',
+        images: [], // Will be populated from URLs
+        textFiles: [], // Will be populated from stored data
+        tone: initialData.input?.tone || 'sweet'
+      };
+    }
+    return {
+      text: '',
+      images: [],
+      textFiles: [],
+      tone: 'sweet'
+    };
   });
   const [imagesWithCaptions, setImagesWithCaptions] = useState<ImageWithCaption[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,6 +55,44 @@ export default function CreateStorybook({
   const [generatedText, setGeneratedText] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [storybookName, setStorybookName] = useState<string>(projectName || '');
+
+  // Initialize data when editing existing storybook
+  useEffect(() => {
+    if (initialData) {
+      setGeneratedText(initialData.output?.generatedText || '');
+      
+      // Initialize images with captions from stored data
+      if (initialData.input?.images) {
+        const imagePromises = initialData.input.images.map(async (imageData) => {
+          try {
+            // Create a placeholder File object from the URL
+            const response = await fetch(imageData.url);
+            const blob = await response.blob();
+            const file = new File([blob], imageData.name, { type: blob.type });
+            
+            return {
+              file,
+              preview: imageData.url,
+              caption: imageData.caption
+            };
+          } catch (error) {
+            console.error('Error loading image:', error);
+            return null;
+          }
+        });
+
+        Promise.all(imagePromises).then(images => {
+          const validImages = images.filter(img => img !== null) as ImageWithCaption[];
+          setImagesWithCaptions(validImages);
+          setFormData(prev => ({
+            ...prev,
+            images: validImages.map(img => img.file)
+          }));
+        });
+      }
+    }
+  }, [initialData]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setFormData(prev => ({
@@ -231,6 +282,15 @@ export default function CreateStorybook({
 
       if (result.success) {
         setGeneratedText(result.generatedText);
+        
+        // Show success message and prompt to save for new projects
+        if (!initialData?.id) {
+          alert('Story generated successfully! Click "Save Generated Story" to save your project.');
+        } else {
+          // Auto-save for existing projects
+          const captions = imagesWithCaptions.map(img => img.caption);
+          onSaveProject(formData, result.generatedText, captions, storybookName);
+        }
       } else {
         alert('Error generating story: ' + result.error);
       }
@@ -243,7 +303,12 @@ export default function CreateStorybook({
   };
 
   const handleSave = () => {
-    onSaveProject(formData);
+    if (!storybookName.trim()) {
+      alert('Please enter a name for your storybook');
+      return;
+    }
+    const captions = imagesWithCaptions.map(img => img.caption);
+    onSaveProject(formData, generatedText, captions, storybookName);
   };
 
   const clearForm = () => {
@@ -255,20 +320,10 @@ export default function CreateStorybook({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <button
-              onClick={onBackToDashboard}
-              className="flex items-center text-gray-600 hover:text-gray-800 mb-4"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to Dashboard
-            </button>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
               {projectName ? `Edit: ${projectName}` : 'Create New Storybook'}
             </h1>
@@ -279,14 +334,34 @@ export default function CreateStorybook({
           <button
             onClick={handleSave}
             disabled={!formData.text.trim() && formData.images.length === 0 && formData.textFiles.length === 0}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+              generatedText && !initialData?.id 
+                ? 'bg-green-600 hover:bg-green-700 text-white animate-pulse' 
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            Save Project
+            {generatedText && !initialData?.id ? 'Save Generated Story' : 'Save Project'}
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-lg border border-gray-200 p-8">
           <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Project Name */}
+            <div>
+              <label htmlFor="storybook-name" className="block text-lg font-semibold text-gray-700 mb-3">
+                Storybook Name
+              </label>
+              <input
+                id="storybook-name"
+                type="text"
+                value={storybookName}
+                onChange={(e) => setStorybookName(e.target.value)}
+                placeholder="Enter a name for your storybook..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+                required
+              />
+            </div>
+
             {/* Tone Selection */}
             <div>
               <label htmlFor="tone-select" className="block text-lg font-semibold text-gray-700 mb-3">
@@ -296,7 +371,7 @@ export default function CreateStorybook({
                 id="tone-select"
                 value={formData.tone}
                 onChange={handleToneChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors text-gray-900"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900"
                 style={{
                   WebkitTextFillColor: '#111827',
                   WebkitBoxShadow: '0 0 0 1000px white inset'
@@ -320,7 +395,7 @@ export default function CreateStorybook({
                 onChange={handleTextChange}
                 placeholder="Share your pregnancy journey moments, thoughts, and feelings..."
                 rows={6}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none transition-colors text-gray-900"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-colors text-gray-900"
                 style={{
                   WebkitTextFillColor: '#111827',
                   WebkitBoxShadow: '0 0 0 1000px white inset'
@@ -429,7 +504,7 @@ export default function CreateStorybook({
                         placeholder="Add a caption for this moment..."
                         value={imageObj.caption}
                         onChange={(e) => handleCaptionChange(index, e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
                         style={{
                           WebkitTextFillColor: '#111827',
                           WebkitBoxShadow: '0 0 0 1000px white inset'
@@ -454,7 +529,7 @@ export default function CreateStorybook({
                 type="button"
                 onClick={handleGenerateStory}
                 disabled={isGenerating || (!formData.text.trim() && formData.images.length === 0)}
-                className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-pink-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isGenerating ? 'Generating Story...' : 'Generate Storybook'}
               </button>
@@ -463,7 +538,7 @@ export default function CreateStorybook({
                 <button
                   type="button"
                   onClick={() => setShowPreview(!showPreview)}
-                  className="flex-1 bg-white border-2 border-pink-500 text-pink-600 py-3 px-6 rounded-lg font-semibold hover:bg-pink-50 transition-colors"
+                  className="flex-1 bg-white border-2 border-blue-500 text-blue-600 py-3 px-6 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
                 >
                   {showPreview ? 'Hide Preview' : 'Preview Storybook'}
                 </button>
@@ -502,20 +577,20 @@ export default function CreateStorybook({
           <div className="mt-8 bg-white rounded-2xl shadow-lg p-6">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Your Journey Summary</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-pink-50 rounded-lg">
-                <div className="text-2xl font-bold text-pink-600">{formData.text.length}</div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-700">{formData.text.length}</div>
                 <div className="text-sm text-gray-600">Characters</div>
               </div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">{formData.images.length}</div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-700">{formData.images.length}</div>
                 <div className="text-sm text-gray-600">Photos</div>
               </div>
-              <div className="text-center p-4 bg-indigo-50 rounded-lg">
-                <div className="text-2xl font-bold text-indigo-600">{formData.textFiles.length}</div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-700">{formData.textFiles.length}</div>
                 <div className="text-sm text-gray-600">Text Files</div>
               </div>
-              <div className="text-center p-4 bg-rose-50 rounded-lg">
-                <div className="text-sm font-medium text-rose-600 capitalize">{formData.tone.replace('_', ' ')}</div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-sm font-medium text-gray-700 capitalize">{formData.tone.replace('_', ' ')}</div>
                 <div className="text-sm text-gray-600">Tone</div>
               </div>
             </div>
