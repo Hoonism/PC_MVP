@@ -54,24 +54,46 @@ export class FirestoreService {
       textFiles: File[];
       captions: string[];
     },
-    generatedText: string
+    generatedText: string,
+    generatedImageUrls: string[] = []
   ): Promise<string> {
     try {
-      // Upload images to Firebase Storage
-      const imageUploads = await Promise.all(
-        inputData.images.map(async (file, index) => {
-          const imageRef = ref(storage, `storybooks/${userId}/${Date.now()}_${file.name}`);
-          const snapshot = await uploadBytes(imageRef, file);
-          const url = await getDownloadURL(snapshot.ref);
-          return {
-            name: file.name,
-            url,
-            caption: inputData.captions[index] || ''
-          };
-        })
-      );
+      // Upload ALL images via server-side API to avoid CORS issues
+      const formData = new FormData();
+      formData.append('userId', userId);
+      
+      // Add user files
+      inputData.images.forEach((file) => {
+        formData.append('files', file);
+      });
+      
+      // Add generated image URLs if any
+      if (generatedImageUrls && generatedImageUrls.length > 0) {
+        formData.append('generatedImageUrls', JSON.stringify(generatedImageUrls));
+      }
 
-      // Process text files
+      console.log('Uploading all images via server API...');
+      const uploadResponse = await fetch('/api/upload-images', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.status}`);
+      }
+
+      const uploadResult = await uploadResponse.json();
+      console.log('Upload result:', uploadResult);
+
+      // Map uploaded user images with captions
+      const imageUploads = uploadResult.userImages.map((img: any, index: number) => ({
+        ...img,
+        caption: inputData.captions[index] || ''
+      }));
+
+      const generatedUploads = uploadResult.generatedImages || [];
+
+      // Upload text files (store content in Firestore)
       const textFileData = await Promise.all(
         inputData.textFiles.map(async (file) => {
           const content = await file.text();
@@ -95,7 +117,7 @@ export class FirestoreService {
         },
         output: {
           generatedText,
-          imageUrls: [] // Placeholder for future improvements
+          imageUrls: generatedUploads // store uploaded generated image URLs
         }
       };
 
@@ -120,7 +142,8 @@ export class FirestoreService {
       textFiles: File[];
       captions: string[];
     },
-    generatedText: string
+    generatedText: string,
+    generatedImageUrls: string[] = []
   ): Promise<void> {
     try {
       const docRef = doc(db, 'storybooks', storybookId);
@@ -141,23 +164,56 @@ export class FirestoreService {
             }
           })
         );
+
+        // Delete old generated images from storage as well
+        await Promise.all(
+          (existingData.output?.imageUrls || []).map(async (url) => {
+            try {
+              const imageRef = ref(storage, url);
+              await deleteObject(imageRef);
+            } catch (error) {
+              console.warn('Error deleting old generated image:', error);
+            }
+          })
+        );
       }
 
-      // Upload new images
-      const imageUploads = await Promise.all(
-        inputData.images.map(async (file, index) => {
-          const imageRef = ref(storage, `storybooks/${userId}/${Date.now()}_${file.name}`);
-          const snapshot = await uploadBytes(imageRef, file);
-          const url = await getDownloadURL(snapshot.ref);
-          return {
-            name: file.name,
-            url,
-            caption: inputData.captions[index] || ''
-          };
-        })
-      );
+      // Upload ALL images via server-side API to avoid CORS issues
+      const formData = new FormData();
+      formData.append('userId', userId);
+      
+      // Add user files
+      inputData.images.forEach((file) => {
+        formData.append('files', file);
+      });
+      
+      // Add generated image URLs if any
+      if (generatedImageUrls && generatedImageUrls.length > 0) {
+        formData.append('generatedImageUrls', JSON.stringify(generatedImageUrls));
+      }
 
-      // Process text files
+      console.log('Uploading all images via server API...');
+      const uploadResponse = await fetch('/api/upload-images', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.status}`);
+      }
+
+      const uploadResult = await uploadResponse.json();
+      console.log('Upload result:', uploadResult);
+
+      // Map uploaded user images with captions
+      const imageUploads = uploadResult.userImages.map((img: any, index: number) => ({
+        ...img,
+        caption: inputData.captions[index] || ''
+      }));
+
+      const generatedUploads = uploadResult.generatedImages || [];
+
+      // Upload text files (store content in Firestore)
       const textFileData = await Promise.all(
         inputData.textFiles.map(async (file) => {
           const content = await file.text();
@@ -179,7 +235,7 @@ export class FirestoreService {
         },
         output: {
           generatedText,
-          imageUrls: []
+          imageUrls: generatedUploads
         }
       };
 
@@ -258,6 +314,18 @@ export class FirestoreService {
               await deleteObject(imageRef);
             } catch (error) {
               console.warn('Error deleting image:', error);
+            }
+          })
+        );
+
+        // Delete generated images from storage
+        await Promise.all(
+          (storybookData.output?.imageUrls || []).map(async (url) => {
+            try {
+              const imageRef = ref(storage, url);
+              await deleteObject(imageRef);
+            } catch (error) {
+              console.warn('Error deleting generated image:', error);
             }
           })
         );

@@ -16,13 +16,20 @@ interface ImageWithCaption {
   file: File;
   preview: string;
   caption: string;
+  broken?: boolean;
 }
 
 import { StorybookData } from '../lib/firestore';
 
 interface CreateStorybookProps {
   onBackToDashboard: () => void;
-  onSaveProject: (projectData: FormData, generatedText?: string, captions?: string[], projectName?: string) => void;
+  onSaveProject: (
+    projectData: FormData,
+    generatedText?: string,
+    captions?: string[],
+    generatedImageUrls?: string[],
+    projectName?: string
+  ) => void;
   initialData?: StorybookData;
   projectName?: string;
 }
@@ -56,43 +63,114 @@ export default function CreateStorybook({
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [storybookName, setStorybookName] = useState<string>(projectName || '');
+  const [isLoadingStoredImages, setIsLoadingStoredImages] = useState(false);
 
   // Initialize data when editing existing storybook
   useEffect(() => {
     if (initialData) {
       setGeneratedText(initialData.output?.generatedText || '');
       
+      
       // Initialize images with captions from stored data
-      if (initialData.input?.images) {
-        const imagePromises = initialData.input.images.map(async (imageData) => {
+      if (initialData.input?.images && initialData.input.images.length > 0) {
+        console.log('Loading user images from stored data:', initialData.input.images.length, 'images');
+        setIsLoadingStoredImages(true);
+        const imagePromises = initialData.input.images.map(async (imageData, index) => {
           try {
-            // Create a placeholder File object from the URL
-            const response = await fetch(imageData.url);
+            console.log(`Loading image ${index + 1}:`, imageData.name, 'from URL:', imageData.url);
+            
+            // Use proxy endpoint to avoid CORS issues
+            const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(imageData.url)}`;
+            const response = await fetch(proxyUrl);
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`Proxy failed for image ${index + 1}:`, response.status, errorText);
+              throw new Error(`Failed to fetch image via proxy: ${response.status} - ${errorText}`);
+            }
+            
             const blob = await response.blob();
             const file = new File([blob], imageData.name, { type: blob.type });
             
+            // Create a blob URL for preview to avoid CORS issues
+            const previewUrl = URL.createObjectURL(blob);
+            
+            console.log(`Successfully loaded image ${index + 1} via proxy:`, imageData.name);
             return {
               file,
-              preview: imageData.url,
+              preview: previewUrl,
               caption: imageData.caption
             };
           } catch (error) {
-            console.error('Error loading image:', error);
-            return null;
+            console.error(`Error loading image ${index + 1} (${imageData.name}) via proxy:`, error);
+            
+            // Fallback: try direct URL access
+            try {
+              console.log(`Trying direct access for image ${index + 1}:`, imageData.url);
+              const response = await fetch(imageData.url, {
+                mode: 'cors',
+                headers: {
+                  'Accept': 'image/*,*/*;q=0.8'
+                }
+              });
+              
+              if (!response.ok) {
+                throw new Error(`Direct fetch failed: ${response.status}`);
+              }
+              
+              const blob = await response.blob();
+              const file = new File([blob], imageData.name, { type: blob.type });
+              const previewUrl = URL.createObjectURL(blob);
+              
+              console.log(`Successfully loaded image ${index + 1} via direct access:`, imageData.name);
+              return {
+                file,
+                preview: previewUrl,
+                caption: imageData.caption
+              };
+            } catch (fallbackError) {
+              console.error(`Both proxy and direct access failed for image ${index + 1}:`, fallbackError);
+              
+              // Last resort: create a placeholder that shows the image is broken but preserves the caption
+              return {
+                file: new File([new Blob()], imageData.name, { type: 'image/jpeg' }),
+                preview: '', // Empty preview will show broken image
+                caption: imageData.caption,
+                broken: true
+              };
+            }
           }
         });
 
         Promise.all(imagePromises).then(images => {
           const validImages = images.filter(img => img !== null) as ImageWithCaption[];
+          console.log(`Loaded ${validImages.length} out of ${initialData.input.images.length} images successfully`);
           setImagesWithCaptions(validImages);
           setFormData(prev => ({
             ...prev,
             images: validImages.map(img => img.file)
           }));
+        }).catch(error => {
+          console.error('Error processing image promises:', error);
+        }).finally(() => {
+          setIsLoadingStoredImages(false);
         });
       }
     }
   }, [initialData]);
+
+  // Cleanup stored image previews on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // Cleanup stored image previews
+      imagesWithCaptions.forEach((img) => {
+        if (img.preview && img.preview.startsWith('blob:')) {
+          URL.revokeObjectURL(img.preview);
+        }
+      });
+    };
+  }, [imagesWithCaptions]);
+
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setFormData(prev => ({
@@ -265,6 +343,7 @@ export default function CreateStorybook({
     try {
       const captions = imagesWithCaptions.map(img => img.caption).filter(caption => caption.trim());
       
+      // Generate story
       const response = await fetch('/api/generate-story', {
         method: 'POST',
         headers: {
@@ -283,14 +362,9 @@ export default function CreateStorybook({
       if (result.success) {
         setGeneratedText(result.generatedText);
         
-        // Show success message and prompt to save for new projects
-        if (!initialData?.id) {
-          alert('Story generated successfully! Click "Save Generated Story" to save your project.');
-        } else {
-          // Auto-save for existing projects
-          const captions = imagesWithCaptions.map(img => img.caption);
-          onSaveProject(formData, result.generatedText, captions, storybookName);
-        }
+        
+        // Show success message
+        alert('Story generated successfully! You can now preview your storybook or save your project.');
       } else {
         alert('Error generating story: ' + result.error);
       }
@@ -302,13 +376,15 @@ export default function CreateStorybook({
     }
   };
 
+
   const handleSave = () => {
     if (!storybookName.trim()) {
       alert('Please enter a name for your storybook');
       return;
     }
     const captions = imagesWithCaptions.map(img => img.caption);
-    onSaveProject(formData, generatedText, captions, storybookName);
+    // Save project with user images and text
+    onSaveProject(formData, generatedText, captions, [], storybookName);
   };
 
   const clearForm = () => {
@@ -475,6 +551,26 @@ export default function CreateStorybook({
               </div>
             </div>
 
+
+            {/* Loading indicator for stored images */}
+            {isLoadingStoredImages && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                  <span className="text-sm text-blue-700">Loading your saved photos...</span>
+                </div>
+              </div>
+            )}
+
+            {/* Debug info when editing */}
+            {initialData && (
+              <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600">
+                <strong>Debug Info:</strong> Editing &quot;{initialData.name}&quot; | 
+                Stored Images: {initialData.input?.images?.length || 0} | 
+                Loaded Images: {imagesWithCaptions.length}
+              </div>
+            )}
+
             {/* Image Previews */}
             {imagesWithCaptions.length > 0 && (
               <div>
@@ -494,11 +590,27 @@ export default function CreateStorybook({
                       <div className="absolute top-2 left-2 bg-gray-500 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                         Drag to reorder
                       </div>
-                      <img
-                        src={imageObj.preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-48 object-cover rounded-lg border border-gray-200 mb-3"
-                      />
+                      {imageObj.broken ? (
+                        <div className="w-full h-48 bg-gray-100 rounded-lg border border-gray-200 mb-3 flex items-center justify-center">
+                          <div className="text-center text-gray-500">
+                            <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <p className="text-sm">Image unavailable</p>
+                            <p className="text-xs text-gray-400">{imageObj.file.name}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <img
+                          src={imageObj.preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-48 object-cover rounded-lg border border-gray-200 mb-3"
+                          onError={(e) => {
+                            console.error(`Image preview failed for ${imageObj.file.name}`);
+                            // You could set a broken flag here if needed
+                          }}
+                        />
+                      )}
                       <input
                         type="text"
                         placeholder="Add a caption for this moment..."
@@ -529,9 +641,19 @@ export default function CreateStorybook({
                 type="button"
                 onClick={handleGenerateStory}
                 disabled={isGenerating || (!formData.text.trim() && formData.images.length === 0)}
-                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
               >
-                {isGenerating ? 'Generating Story...' : 'Generate Storybook'}
+                {isGenerating ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating Story...
+                  </>
+                ) : (
+                  'Generate Story'
+                )}
               </button>
               
               {(formData.text.trim() || formData.images.length > 0) && (
@@ -569,6 +691,7 @@ export default function CreateStorybook({
                 </div>
               </div>
             )}
+
           </form>
         </div>
 

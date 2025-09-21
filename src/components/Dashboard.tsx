@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StorybookData } from '../lib/firestore';
 import { useTheme } from '../contexts/ThemeContext';
 import { getBackgroundClass, getCardBackgroundClass, getHeadingClass, getBodyClass, getButtonClass } from '../lib/theme';
@@ -26,6 +26,8 @@ export default function Dashboard({
   const { theme } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'date'>('date');
+  // Cache blob-based preview URLs per project to mirror successful rendering method
+  const [projectImagePreviews, setProjectImagePreviews] = useState<Record<string, string[]>>({});
   
   console.log('Dashboard received projects:', projects); // Debug log
 
@@ -50,6 +52,51 @@ export default function Dashboard({
       day: 'numeric'
     });
   };
+
+  // Build blob previews for each project's images (limit to first 4 for card)
+  useEffect(() => {
+    let isActive = true;
+
+    const buildPreviews = async () => {
+      // Revoke old previews first to avoid leaks
+      Object.values(projectImagePreviews).forEach(urls => urls.forEach(u => URL.revokeObjectURL(u)));
+      const previewMap: Record<string, string[]> = {};
+
+      for (const project of projects) {
+        const id = project.id || project.name;
+        const imgs = project.input?.images || [];
+        const urls: string[] = [];
+        for (const image of imgs.slice(0, 4)) {
+          try {
+            const resp = await fetch(image.url, { mode: 'cors' });
+            const blob = await resp.blob();
+            const objUrl = URL.createObjectURL(blob);
+            urls.push(objUrl);
+          } catch (e) {
+            console.warn('Preview fetch failed, fallback to direct URL:', image.url, e);
+            urls.push(image.url);
+          }
+        }
+        previewMap[id] = urls;
+      }
+
+      if (isActive) setProjectImagePreviews(previewMap);
+    };
+
+    if (projects && projects.length > 0) {
+      buildPreviews();
+    } else {
+      // clear previews
+      Object.values(projectImagePreviews).forEach(urls => urls.forEach(u => URL.revokeObjectURL(u)));
+      setProjectImagePreviews({});
+    }
+
+    return () => {
+      isActive = false;
+      Object.values(projectImagePreviews).forEach(urls => urls.forEach(u => URL.revokeObjectURL(u)));
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects]);
 
   const getToneColor = (tone: string) => {
     if (theme === 'dark') {
@@ -155,7 +202,74 @@ export default function Dashboard({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.map((project) => (
-              <div key={project.id} className={`${getCardBackgroundClass(theme)} rounded-lg border ${theme === 'dark' ? 'border-gray-700 hover:border-gray-600' : 'border-gray-200 hover:border-gray-300'} transition-all overflow-hidden`}>
+              <div key={project.id} className={`group ${getCardBackgroundClass(theme)} rounded-lg border ${theme === 'dark' ? 'border-gray-700 hover:border-gray-600' : 'border-gray-200 hover:border-gray-300'} transition-all overflow-hidden`}>
+                {/* Image Preview Section */}
+                {project.input?.images?.length > 0 && (
+                  <div className="relative">
+                    <div className="h-48 bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                      {(() => {
+                        const id = project.id || project.name;
+                        const previews = projectImagePreviews[id] || [];
+                        if (project.input.images.length === 1) {
+                          const src = previews[0] || project.input.images[0].url;
+                          return (
+                            <img
+                              src={src}
+                              crossOrigin="anonymous"
+                              referrerPolicy="no-referrer"
+                              alt={project.input.images[0].caption || 'Storybook image'}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                if (src !== project.input.images[0].url) {
+                                  (e.currentTarget as HTMLImageElement).src = project.input.images[0].url;
+                                }
+                              }}
+                            />
+                          );
+                        }
+                        return (
+                          <div className="grid grid-cols-2 gap-1 h-full">
+                            {(project.input.images.slice(0, 4)).map((image, index) => {
+                              const src = previews[index] || image.url;
+                              return (
+                                <div key={index} className="relative overflow-hidden">
+                                  <img
+                                    src={src}
+                                    crossOrigin="anonymous"
+                                    referrerPolicy="no-referrer"
+                                    alt={image.caption || `Storybook image ${index + 1}`}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      if (src !== image.url) {
+                                        (e.currentTarget as HTMLImageElement).src = image.url;
+                                      }
+                                    }}
+                                  />
+                                  {index === 3 && project.input.images.length > 4 && (
+                                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                                      <span className="text-white font-medium text-sm">
+                                        +{project.input.images.length - 4} more
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    <div className="absolute inset-0 bg-transparent group-hover:bg-black/30 transition-all duration-200 rounded-lg flex items-center justify-center">
+                      <button
+                        onClick={() => onEditProject(project)}
+                        className={`opacity-0 group-hover:opacity-100 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 transform translate-y-2 group-hover:translate-y-0`}
+                      >
+                        Add to Storybook
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <h3 className={`${getHeadingClass('h3', theme)} truncate flex-1 mr-2`}>

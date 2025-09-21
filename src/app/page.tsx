@@ -66,9 +66,16 @@ function AppContent() {
     setEditingProject(null);
   };
 
-  const saveProject = async (projectData: FormData, generatedText: string = '', captions: string[] = [], projectName?: string) => {
+  const saveProject = async (
+    projectData: FormData,
+    generatedText: string = '',
+    captions: string[] = [],
+    generatedImageUrls: string[] = [],
+    projectName?: string
+  ) => {
     if (!projectName || !user) return;
 
+    console.log('saveProject called with generatedImageUrls:', generatedImageUrls);
     setLoading(true);
     try {
       if (editingProject && editingProject.id) {
@@ -84,7 +91,8 @@ function AppContent() {
             textFiles: projectData.textFiles,
             captions
           },
-          generatedText
+          generatedText,
+          generatedImageUrls
         );
       } else {
         // Create new project
@@ -98,7 +106,8 @@ function AppContent() {
             textFiles: projectData.textFiles,
             captions
           },
-          generatedText
+          generatedText,
+          generatedImageUrls
         );
       }
       
