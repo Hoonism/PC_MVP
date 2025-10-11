@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getStorage, ref, uploadBytes, getDownloadURL, FirebaseStorage } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, FirebaseStorage } from 'firebase/storage';
 
 // Firebase config (using environment variables)
 const firebaseConfig = {
@@ -23,6 +23,14 @@ try {
 } catch (error) {
   console.error('Firebase initialization error:', error);
   throw new Error('Firebase initialization failed');
+}
+
+// Helper function to generate public download URL
+function getPublicUrl(storagePath: string): string {
+  const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  // Use the simple public URL format without tokens
+  // This works if Firebase Storage rules allow public read access
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(storagePath)}?alt=media`;
 }
 
 export async function POST(request: NextRequest) {
@@ -67,10 +75,17 @@ export async function POST(request: NextRequest) {
             try {
               console.log(`Processing file ${index + 1}:`, file.name, file.size, 'bytes');
               const buffer = Buffer.from(await file.arrayBuffer());
-              const imageRef = ref(storage, `storybooks/${userId}/${Date.now()}_${file.name}`);
-              const snapshot = await uploadBytes(imageRef, buffer, { contentType: file.type });
-              const url = await getDownloadURL(snapshot.ref);
-              console.log(`User file ${index + 1} uploaded:`, url);
+              const timestamp = Date.now();
+              const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+              const storagePath = `storybooks/${userId}/${timestamp}_${sanitizedName}`;
+              const imageRef = ref(storage, storagePath);
+              
+              await uploadBytes(imageRef, buffer, { contentType: file.type });
+              const url = getPublicUrl(storagePath);
+              
+              console.log(`User file ${index + 1} uploaded to path:`, storagePath);
+              console.log(`User file ${index + 1} URL:`, url);
+              
               return {
                 name: file.name,
                 url,
@@ -106,10 +121,16 @@ export async function POST(request: NextRequest) {
                 const buffer = Buffer.from(await resp.arrayBuffer());
                 const contentType = resp.headers.get('content-type') || 'image/png';
                 const ext = contentType.includes('jpeg') ? 'jpg' : 'png';
-                const genRef = ref(storage, `storybooks/${userId}/generated/${Date.now()}_${index}.${ext}`);
-                const snapshot = await uploadBytes(genRef, buffer, { contentType });
-                const downloadUrl = await getDownloadURL(snapshot.ref);
-                console.log(`Generated image ${index + 1} uploaded:`, downloadUrl);
+                const timestamp = Date.now();
+                const storagePath = `storybooks/${userId}/generated/${timestamp}_ai-story_${index}.${ext}`;
+                const genRef = ref(storage, storagePath);
+                
+                await uploadBytes(genRef, buffer, { contentType });
+                const downloadUrl = getPublicUrl(storagePath);
+                
+                console.log(`Generated image ${index + 1} uploaded to path:`, storagePath);
+                console.log(`Generated image ${index + 1} URL:`, downloadUrl);
+                
                 return downloadUrl;
               } catch (e) {
                 console.error('Failed to upload generated image:', url, e);

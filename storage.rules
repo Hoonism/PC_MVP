@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow public read access to all storybook images
+    // This enables the public URL format to work
+    match /storybooks/{userId}/{allPaths=**} {
+      // Anyone can read the files (for public URLs to work)
+      allow read: if true;
+      
+      // TEMPORARY: Allow all writes (server-side uploads don't have auth context)
+      // TODO: Move to client-side uploads with proper authentication
+      allow write: if true;
+    }
+    
+    // Default: deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

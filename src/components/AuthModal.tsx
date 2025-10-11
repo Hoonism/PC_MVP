@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '../lib/firebase';
-import { getButtonClass, getInputClass, getCardClass, getHeadingClass, getBodyClass, themeStyles } from '../lib/theme';
+import { getButtonClass, getInputClass, getCardClass, getHeadingClass, getBodyClass, getBackgroundClass, getCardBackgroundClass } from '../lib/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+  const { theme } = useTheme();
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -48,19 +50,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className={`${getCardClass('base')} w-full max-w-md p-8`}>
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">JourneyBook</h1>
-          <p className="text-gray-600">Your pregnancy journey, beautifully documented</p>
+    <div className={`fixed inset-0 ${theme === 'dark' ? 'bg-black bg-opacity-70' : 'bg-black bg-opacity-50'} flex items-center justify-center p-4 z-50`}>
+      <div className={`${getCardClass('elevated', theme)} w-full max-w-sm p-6`}>
+        <div className="text-center mb-6">
+          <h1 className={getHeadingClass('h1', theme)}>JourneyBook</h1>
+          <p className={`${getBodyClass('small', theme)} mt-1`}>Your pregnancy journey, beautifully documented</p>
         </div>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className={getHeadingClass('h2', theme)}>
             {isLoginMode ? 'Welcome Back' : 'Create Account'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
+            className={`${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'} text-xl`}
           >
             ×
           </button>
@@ -68,14 +70,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            <div className={`${theme === 'dark' ? 'bg-red-900 border-red-700 text-red-200' : 'bg-red-50 border-red-200 text-red-700'} px-3 py-2 border rounded-md text-sm`}>
               {error}
             </div>
           )}
           
           {!isLoginMode && (
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="name" className={`block ${getBodyClass('small', theme)} mb-1`}>
                 Full Name
               </label>
               <input
@@ -84,18 +86,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required={!isLoginMode}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900"
-                style={{
-                  WebkitTextFillColor: '#111827',
-                  WebkitBoxShadow: '0 0 0 1000px white inset'
-                }}
+                className={getInputClass('base', theme)}
                 placeholder="Enter your full name"
               />
             </div>
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className={`block ${getBodyClass('small', theme)} mb-1`}>
               Email Address
             </label>
             <input
@@ -104,17 +102,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900"
-              style={{
-                WebkitTextFillColor: '#111827',
-                WebkitBoxShadow: '0 0 0 1000px white inset'
-              }}
+              className={getInputClass('base', theme)}
               placeholder="Enter your email"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className={`block ${getBodyClass('small', theme)} mb-1`}>
               Password
             </label>
             <input
@@ -123,11 +117,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-gray-900"
-              style={{
-                WebkitTextFillColor: '#111827',
-                WebkitBoxShadow: '0 0 0 1000px white inset'
-              }}
+              className={getInputClass('base', theme)}
               placeholder="Enter your password"
             />
           </div>
@@ -135,16 +125,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <button
             type="submit"
             disabled={isLoading}
-            className={getButtonClass('primary')}
+            className={`${getButtonClass('primary', theme)} w-full disabled:opacity-50`}
           >
             {isLoading ? 'Loading...' : (isLoginMode ? 'Sign In' : 'Create Account')}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-4 text-center">
           <button
             onClick={() => setIsLoginMode(!isLoginMode)}
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className={`${theme === 'dark' ? 'text-slate-400 hover:text-slate-300' : 'text-slate-600 hover:text-slate-700'} font-medium text-sm`}
           >
             {isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
           </button>

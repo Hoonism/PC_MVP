@@ -53,45 +53,82 @@ export class FirestoreService {
       images: File[];
       textFiles: File[];
       captions: string[];
+      existingImageUrls?: string[]; // Optional: URLs of images that already exist
     },
     generatedText: string,
     generatedImageUrls: string[] = []
   ): Promise<string> {
     try {
-      // Upload ALL images via server-side API to avoid CORS issues
-      const formData = new FormData();
-      formData.append('userId', userId);
+      const existingUrls = inputData.existingImageUrls || [];
+      const newImages: File[] = [];
+      // Maintain final images array in original order
+      const finalImages: Array<{name: string; url: string; caption: string}> = new Array(inputData.images.length);
+      // Track positions that require upload so we can place results correctly
+      const uploadIndices: number[] = [];
       
-      // Add user files
-      inputData.images.forEach((file) => {
-        formData.append('files', file);
+      // Separate existing images from new uploads
+      inputData.images.forEach((file, index) => {
+        const existingUrl = existingUrls[index];
+        if (existingUrl) {
+          // Place existing image directly in its original slot
+          console.log(`Skipping upload for existing image ${index + 1}:`, file.name);
+          finalImages[index] = {
+            name: file.name,
+            url: existingUrl,
+            caption: inputData.captions[index] || ''
+          };
+        } else {
+          // New image, needs upload and mapping back to this index
+          newImages.push(file);
+          uploadIndices.push(index);
+        }
       });
       
-      // Add generated image URLs if any
-      if (generatedImageUrls && generatedImageUrls.length > 0) {
-        formData.append('generatedImageUrls', JSON.stringify(generatedImageUrls));
+      let generatedUploads: string[] = [];
+      
+      // Upload only new images via server-side API
+      if (newImages.length > 0 || (generatedImageUrls && generatedImageUrls.length > 0)) {
+        console.log(`Uploading ${newImages.length} new images via server API...`);
+        const formData = new FormData();
+        formData.append('userId', userId);
+        
+        newImages.forEach((file) => {
+          formData.append('files', file);
+        });
+        
+        // Add generated image URLs if any
+        if (generatedImageUrls && generatedImageUrls.length > 0) {
+          formData.append('generatedImageUrls', JSON.stringify(generatedImageUrls));
+        }
+
+        const uploadResponse = await fetch('/api/upload-images', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Upload failed: ${uploadResponse.status}`);
+        }
+
+        const uploadResult = await uploadResponse.json();
+        console.log('Upload result:', uploadResult);
+        
+        generatedUploads = uploadResult.generatedImages || [];
+
+        // Place uploaded images back into their original positions
+        let uploadIndex = 0;
+        for (const i of uploadIndices) {
+          const uploaded = uploadResult.userImages[uploadIndex];
+          finalImages[i] = {
+            ...uploaded,
+            caption: inputData.captions[i] || ''
+          };
+          uploadIndex++;
+        }
       }
-
-      console.log('Uploading all images via server API...');
-      const uploadResponse = await fetch('/api/upload-images', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`Upload failed: ${uploadResponse.status}`);
-      }
-
-      const uploadResult = await uploadResponse.json();
-      console.log('Upload result:', uploadResult);
-
-      // Map uploaded user images with captions
-      const imageUploads = uploadResult.userImages.map((img: any, index: number) => ({
-        ...img,
-        caption: inputData.captions[index] || ''
-      }));
-
-      const generatedUploads = uploadResult.generatedImages || [];
+      
+      // Use the finalImages array which already preserves the original order
+      const imageUploads = finalImages;
 
       // Upload text files (store content in Firestore)
       const textFileData = await Promise.all(
@@ -141,6 +178,7 @@ export class FirestoreService {
       images: File[];
       textFiles: File[];
       captions: string[];
+      existingImageUrls?: string[]; // Optional: URLs of images that already exist
     },
     generatedText: string,
     generatedImageUrls: string[] = []
@@ -148,70 +186,110 @@ export class FirestoreService {
     try {
       const docRef = doc(db, 'storybooks', storybookId);
       
-      // Get existing storybook to clean up old images
+      // Get existing storybook to identify which images to delete
       const existingDoc = await getDoc(docRef);
+      const existingUrls = inputData.existingImageUrls || [];
+      
       if (existingDoc.exists()) {
         const existingData = existingDoc.data() as StorybookData;
         
-        // Delete old images from storage
+        // Delete only images that are no longer being used
+        const urlsToKeep = new Set(existingUrls.filter(url => url));
         await Promise.all(
           existingData.input.images.map(async (image) => {
-            try {
-              const imageRef = ref(storage, image.url);
-              await deleteObject(imageRef);
-            } catch (error) {
-              console.warn('Error deleting old image:', error);
+            if (!urlsToKeep.has(image.url)) {
+              try {
+                console.log('Deleting unused image:', image.url);
+                const imageRef = ref(storage, image.url);
+                await deleteObject(imageRef);
+              } catch (error) {
+                console.warn('Error deleting old image:', error);
+              }
             }
           })
         );
 
-        // Delete old generated images from storage as well
-        await Promise.all(
-          (existingData.output?.imageUrls || []).map(async (url) => {
-            try {
-              const imageRef = ref(storage, url);
-              await deleteObject(imageRef);
-            } catch (error) {
-              console.warn('Error deleting old generated image:', error);
-            }
-          })
-        );
+        // Handle generated images similarly
+        // For now, always re-upload generated images if provided
+        if (generatedImageUrls && generatedImageUrls.length > 0) {
+          await Promise.all(
+            (existingData.output?.imageUrls || []).map(async (url) => {
+              try {
+                const imageRef = ref(storage, url);
+                await deleteObject(imageRef);
+              } catch (error) {
+                console.warn('Error deleting old generated image:', error);
+              }
+            })
+          );
+        }
       }
 
-      // Upload ALL images via server-side API to avoid CORS issues
-      const formData = new FormData();
-      formData.append('userId', userId);
+      // Use the same smart upload logic as saveStorybook, preserving positions
+      const newImages: File[] = [];
+      const finalImages: Array<{name: string; url: string; caption: string}> = new Array(inputData.images.length);
+      const uploadIndices: number[] = [];
       
-      // Add user files
-      inputData.images.forEach((file) => {
-        formData.append('files', file);
+      // Separate existing images from new uploads
+      inputData.images.forEach((file, index) => {
+        const existingUrl = existingUrls[index];
+        if (existingUrl) {
+          console.log(`Keeping existing image ${index + 1}:`, file.name);
+          finalImages[index] = {
+            name: file.name,
+            url: existingUrl,
+            caption: inputData.captions[index] || ''
+          };
+        } else {
+          newImages.push(file);
+          uploadIndices.push(index);
+        }
       });
       
-      // Add generated image URLs if any
-      if (generatedImageUrls && generatedImageUrls.length > 0) {
-        formData.append('generatedImageUrls', JSON.stringify(generatedImageUrls));
+      let generatedUploads: string[] = [];
+      
+      // Upload only new images
+      if (newImages.length > 0 || (generatedImageUrls && generatedImageUrls.length > 0)) {
+        console.log(`Uploading ${newImages.length} new images via server API...`);
+        const formData = new FormData();
+        formData.append('userId', userId);
+        
+        newImages.forEach((file) => {
+          formData.append('files', file);
+        });
+        
+        if (generatedImageUrls && generatedImageUrls.length > 0) {
+          formData.append('generatedImageUrls', JSON.stringify(generatedImageUrls));
+        }
+
+        const uploadResponse = await fetch('/api/upload-images', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Upload failed: ${uploadResponse.status}`);
+        }
+
+        const uploadResult = await uploadResponse.json();
+        console.log('Upload result:', uploadResult);
+        
+        generatedUploads = uploadResult.generatedImages || [];
+
+        // Place uploaded images back into their original positions
+        let uploadIndex = 0;
+        for (const i of uploadIndices) {
+          const uploaded = uploadResult.userImages[uploadIndex];
+          finalImages[i] = {
+            ...uploaded,
+            caption: inputData.captions[i] || ''
+          };
+          uploadIndex++;
+        }
       }
-
-      console.log('Uploading all images via server API...');
-      const uploadResponse = await fetch('/api/upload-images', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`Upload failed: ${uploadResponse.status}`);
-      }
-
-      const uploadResult = await uploadResponse.json();
-      console.log('Upload result:', uploadResult);
-
-      // Map uploaded user images with captions
-      const imageUploads = uploadResult.userImages.map((img: any, index: number) => ({
-        ...img,
-        caption: inputData.captions[index] || ''
-      }));
-
-      const generatedUploads = uploadResult.generatedImages || [];
+      
+      // Use finalImages preserving original order
+      const imageUploads = finalImages;
 
       // Upload text files (store content in Firestore)
       const textFileData = await Promise.all(

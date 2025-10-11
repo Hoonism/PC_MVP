@@ -10,40 +10,64 @@ export async function POST(request: NextRequest) {
   try {
     const { text, tone, imageCount, captions } = await request.json();
 
-    // Create tone-specific prompts
+    // Create tone-specific prompts with better structure
     const tonePrompts = {
-      sweet: "Create a sweet and sentimental pregnancy journey story that captures the tender emotions and loving anticipation of expecting parents.",
-      humorous: "Write a humorous and honest pregnancy journey story that includes the funny, unexpected moments and real experiences of pregnancy.",
-      journalistic: "Compose a journalistic and milestone-focused pregnancy story that documents key moments and developments in a structured, informative way.",
-      poetic: "Craft a poetic and reflective pregnancy journey story using beautiful, lyrical language that captures the wonder and transformation of this time."
+      sweet: {
+        style: "sweet, sentimental, and heartwarming",
+        voice: "loving and tender",
+        focus: "the emotional journey and tender moments"
+      },
+      humorous: {
+        style: "humorous, honest, and relatable",
+        voice: "funny yet authentic",
+        focus: "the real, unexpected, and amusing moments"
+      },
+      journalistic: {
+        style: "journalistic, factual, and milestone-focused",
+        voice: "clear and informative",
+        focus: "key developments and important milestones"
+      },
+      poetic: {
+        style: "poetic, lyrical, and reflective",
+        voice: "beautiful and contemplative",
+        focus: "the wonder, transformation, and deeper meaning"
+      }
     };
 
-    // Build the prompt
-    const prompt = `
-${tonePrompts[tone as keyof typeof tonePrompts]}
+    const selectedTone = tonePrompts[tone as keyof typeof tonePrompts];
 
-User's personal content:
-${text}
+    // Build the enhanced prompt
+    const prompt = `You are writing a personalized pregnancy journey story for a family's storybook. This will be treasured for years.
 
-Additional context:
-- Number of photos: ${imageCount}
-- Photo captions: ${captions.join(', ')}
+TONE & STYLE:
+Write in a ${selectedTone.style} style with a ${selectedTone.voice} voice, focusing on ${selectedTone.focus}.
 
-Please create a cohesive, personalized pregnancy journey story that:
-1. Incorporates the user's personal text naturally
-2. References the photos and their captions meaningfully
-3. Maintains the ${tone} tone throughout
-4. Is approximately 300-500 words
-5. Feels personal and authentic to this specific journey
+PARENT'S MEMORIES:
+${text || 'The family is capturing their pregnancy journey through photos.'}
 
-The story should flow naturally and feel like it was written specifically for this family's unique experience.
-`;
+PHOTO JOURNEY (${imageCount} photos):
+${captions.length > 0 
+  ? captions.map((caption: string, i: number) => `Photo ${i + 1}: ${caption}`).join('\n')
+  : `${imageCount} meaningful moments from their journey`}
+
+INSTRUCTIONS:
+1. Create a narrative that weaves together the parent's memories with the photo captions
+2. Each photo caption should be naturally referenced or alluded to in the story
+3. Create a clear beginning (anticipation), middle (journey), and end (looking forward)
+4. Make specific references to moments described in the captions - don't just list them
+5. Keep the ${tone} tone consistent throughout
+6. Write 300-500 words that feel intimate and personal
+7. Use "we/our" perspective if the parent used it, otherwise use third person
+8. End with a warm, forward-looking conclusion
+
+Write the story now, making it feel like it was written by someone who lived this experience:`;
+
 
     console.log('Sending request to fal.ai with prompt:', prompt.substring(0, 100) + '...');
     
     const result = await fal.subscribe("fal-ai/any-llm", {
       input: {
-        model: "openai/gpt-4o",
+        model: "openai/gpt-5-chat",
         prompt: prompt,
         max_tokens: 1200,
         temperature: 0.7,

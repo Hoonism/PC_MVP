@@ -23,13 +23,13 @@ export async function POST(request: NextRequest) {
 
     const enhancedPrompt = `${prompt}, ${stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.realistic}, pregnancy journey, heartwarming, beautiful lighting`;
 
-    const result = await fal.subscribe("fal-ai/flux/schnell", {
+    const result = await fal.subscribe("fal-ai/flux-pro/new", {
       input: {
         prompt: enhancedPrompt,
         image_size: aspectRatio === "1:1" ? "square_hd" : "landscape_4_3",
-        num_inference_steps: 4,
         num_images: numImages,
-        enable_safety_checker: true
+        safety_tolerance: "2",  // FLUX Pro uses safety_tolerance instead of enable_safety_checker
+        output_format: "jpeg"   // Optimize for file size
       }
     });
 
