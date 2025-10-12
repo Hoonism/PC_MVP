@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const result = await fal.subscribe("fal-ai/flux-pro/new", {
       input: {
         prompt: enhancedPrompt,
-        image_size: aspectRatio === "1:1" ? "square_hd" : "landscape_4_3",
+        image_size: aspectRatio === "1:1" ? "square_hd" : "landscape_16_9",  // Landscape 16:9 format (1920x1080)
         num_images: numImages,
         safety_tolerance: "2",  // FLUX Pro uses safety_tolerance instead of enable_safety_checker
         output_format: "jpeg"   // Optimize for file size

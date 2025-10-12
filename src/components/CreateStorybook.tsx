@@ -414,11 +414,12 @@ export default function CreateStorybook({
         console.log('Using cached story paragraphs for PDF generation');
       }
 
-      // Create PDF with text overlaid on images
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const margin = 20;
+      // Create PDF with 16:9 aspect ratio (landscape orientation for widescreen)
+      // Using 297mm width (A4 landscape width) for good print quality
+      const pageWidth = 297; // 16:9 landscape width
+      const pageHeight = 167.06; // 297 / 16 * 9 = 167.0625mm for perfect 16:9
+      const pdf = new jsPDF('l', 'mm', [pageWidth, pageHeight]); // landscape, custom size
+      const margin = 15; // Smaller margin for 16:9 format
       const contentWidth = pageWidth - (margin * 2);
       const contentHeight = pageHeight - (margin * 2);
 
@@ -450,21 +451,27 @@ export default function CreateStorybook({
               const canvas = document.createElement('canvas');
               const ctx = canvas.getContext('2d');
               
-              // Set canvas size to maintain aspect ratio within page bounds
+              // Set canvas size to maintain full aspect ratio - use entire content area
               const imgAspectRatio = img.width / img.height;
-              let canvasWidth = contentWidth * 2.83; // Convert mm to pixels (rough conversion)
-              let canvasHeight = canvasWidth / imgAspectRatio;
+              const contentAspectRatio = contentWidth / contentHeight;
               
-              // If height is too large, scale down
-              if (canvasHeight > (contentHeight * 0.7) * 2.83) {
-                canvasHeight = (contentHeight * 0.7) * 2.83;
+              let canvasWidth, canvasHeight;
+              
+              // Fit image to page while preserving aspect ratio (object-contain behavior)
+              if (imgAspectRatio > contentAspectRatio) {
+                // Image is wider - fit to width
+                canvasWidth = contentWidth * 2.83;
+                canvasHeight = canvasWidth / imgAspectRatio;
+              } else {
+                // Image is taller - fit to height
+                canvasHeight = contentHeight * 2.83;
                 canvasWidth = canvasHeight * imgAspectRatio;
               }
               
               canvas.width = canvasWidth;
               canvas.height = canvasHeight;
               
-              // Draw image
+              // Draw full image without cropping
               ctx!.drawImage(img, 0, 0, canvasWidth, canvasHeight);
               
               // Add the image to PDF (full page)
@@ -478,39 +485,46 @@ export default function CreateStorybook({
               
               pdf.addImage(imgData, 'JPEG', imgX, imgY, imgWidthMM, imgHeightMM);
               
-              // Now add text overlay with highlighter effect
-              pdf.setFontSize(16);
-              pdf.setFont('helvetica', 'bold');
+              // Now add text overlay with elegant storybook styling
+              pdf.setFontSize(12);  // Smaller, more subtle text
+              pdf.setFont('times', 'italic'); // Times New Roman italic for classic storybook feel
               
-              // Calculate text position (bottom third of image)
-              const textY = imgY + imgHeightMM * 0.7;
-              const textWidth = imgWidthMM - 40; // More margin for better readability
-              const textX = imgX + 20;
-              
+              // Calculate text position (bottom right corner with generous margins)
+              const textWidth = imgWidthMM * 0.28; // 28% of image width for compact box
+              const textX = imgX + imgWidthMM - 20 - textWidth; // 20mm right margin
+
               // Split text into lines that fit the width
               const lines = pdf.splitTextToSize(paragraph, textWidth);
-              const lineHeight = 7; // Line spacing
+              const lineHeight = 6.5; // Tighter line spacing
               const totalTextHeight = lines.length * lineHeight;
-              const padding = 8;
+
+              const textY = imgY + imgHeightMM - totalTextHeight - 20; // Bottom position with 20mm margin
+              const padding = 10; // Smaller padding
               
-              // Draw highlighter effect background for text
-              // Using a bright semi-opaque yellow highlighter for readability
+              // Draw elegant background with subtle shadow effect
               const bgY = textY - padding;
               const bgHeight = totalTextHeight + (padding * 2);
+              const bgX = textX - padding;
+              const bgWidth = textWidth + (padding * 2);
               
-              // Set opacity for the highlighter background
-              (pdf as any).setGState((pdf as any).GState({ opacity: 0.85 }));
-              pdf.setFillColor(255, 255, 102); // Bright yellow highlighter
-              pdf.roundedRect(textX - padding, bgY, textWidth + (padding * 2), bgHeight, 3, 3, 'F');
+              // Add subtle shadow for depth
+              (pdf as any).setGState((pdf as any).GState({ opacity: 0.1 }));
+              pdf.setFillColor(0, 0, 0); // Black shadow
+              pdf.roundedRect(bgX + 2, bgY + 2, bgWidth, bgHeight, 5, 5, 'F');
+              
+              // Main background - soft cream/beige with more transparency
+              (pdf as any).setGState((pdf as any).GState({ opacity: 0.5 }));
+              pdf.setFillColor(255, 252, 245); // Warm off-white/cream color
+              pdf.roundedRect(bgX, bgY, bgWidth, bgHeight, 5, 5, 'F');
               
               // Reset opacity for text
               (pdf as any).setGState((pdf as any).GState({ opacity: 1 }));
-              pdf.setTextColor(20, 20, 20); // Dark gray/black text for contrast
+              pdf.setTextColor(40, 35, 30); // Warm dark brown for text
               
-              // Add the text with proper spacing
-              let currentY = textY + 5;
+              // Add the text with proper spacing and alignment
+              let currentY = textY + 6;
               lines.forEach((line: string) => {
-                pdf.text(line, textX, currentY);
+                pdf.text(line, textX, currentY, { align: 'left', lineHeightFactor: 1.4 });
                 currentY += lineHeight;
               });
               
@@ -998,7 +1012,7 @@ export default function CreateStorybook({
                       <img
                         src={imageObj.existingUrl || imageObj.preview}
                         alt={`Preview ${index + 1}`}
-                        className={`w-full h-40 object-cover rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} mb-3`}
+                        className={`w-full h-48 object-contain rounded-lg border ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'} mb-3`}
                         onError={(e) => {
                           console.error(`Image preview failed for ${imageObj.file?.name || 'AI image'}`);
                         }}
@@ -1189,7 +1203,7 @@ export default function CreateStorybook({
                       <img
                         src={imageObj.existingUrl || imageObj.preview}
                         alt={`Journey moment ${index + 1}`}
-                        className="max-w-md w-full h-64 object-cover rounded-lg shadow-md"
+                        className="max-w-md w-full h-64 object-contain rounded-lg shadow-md bg-gray-100 dark:bg-gray-800"
                       />
                       {imageObj.caption && (
                         <div className="text-center max-w-md">
@@ -1246,7 +1260,7 @@ export default function CreateStorybook({
             
             <div className="space-y-8">
               <p className={`${getBodyClass('small', theme)} mb-6`}>
-                Preview of your story PDF - each page has one paragraph overlaid on an image with a yellow highlighter effect for readability.
+                Preview of your story PDF - each page has one paragraph overlaid on an image in 16:9 widescreen format.
               </p>
               
               {storyParagraphs.map((paragraph, index) => {
@@ -1269,9 +1283,9 @@ export default function CreateStorybook({
                     <div className={`${theme === 'dark' ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'} px-4 py-2 text-sm font-medium`}>
                       Page {index + 1}
                     </div>
-                    <div className="relative">
+                    <div className="relative aspect-video">
                       {!imageSrc || imageObj.broken ? (
-                        <div className={`w-full h-96 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'} flex items-center justify-center`}>
+                        <div className={`w-full h-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'} flex items-center justify-center`}>
                           <div className={`text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                             <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -1284,14 +1298,14 @@ export default function CreateStorybook({
                         <img
                           src={imageSrc}
                           alt={`Story page ${index + 1}`}
-                          className="w-full h-96 object-cover"
+                          className="w-full h-full object-contain bg-gray-100 dark:bg-gray-800"
                           onError={(e) => {
                             console.error(`Image ${index + 1} failed to load:`, imageSrc, imageObj);
                             const target = e.currentTarget;
                             const parent = target.parentElement;
                             if (parent) {
                               parent.innerHTML = `
-                                <div class="w-full h-96 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'} flex items-center justify-center">
+                                <div class="w-full h-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'} flex items-center justify-center">
                                   <div class="text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}">
                                     <p>Failed to load image</p>
                                     <p class="text-xs mt-2">Check console for details</p>
@@ -1303,9 +1317,19 @@ export default function CreateStorybook({
                         />
                       )}
                       
-                      {/* Text overlay preview with highlighter effect */}
-                      <div className="absolute bottom-8 left-8 right-8 bg-yellow-300 bg-opacity-90 rounded-lg p-6 shadow-lg">
-                        <p className="text-gray-900 text-base font-bold leading-relaxed">
+                      {/* Text overlay preview matching PDF styling */}
+                      <div className="absolute bottom-6 right-6 rounded-lg shadow-lg inline-block w-[28%]" style={{
+                        backgroundColor: 'rgba(255, 252, 245, 0.5)',
+                        padding: '10px',
+                        boxShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)'
+                      }}>
+                        <p className="text-sm leading-relaxed break-words" style={{
+                          color: 'rgb(40, 35, 30)',
+                          fontFamily: 'Georgia, "Times New Roman", serif',
+                          fontStyle: 'italic',
+                          fontSize: '0.875rem',
+                          lineHeight: '1.6'
+                        }}>
                           {paragraph}
                         </p>
                       </div>
