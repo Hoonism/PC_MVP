@@ -1,7 +1,7 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 // Your Firebase configuration
 // Replace these with your actual Firebase project credentials
@@ -14,11 +14,38 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Check if we're in a browser environment and have valid config
+const isConfigValid = () => {
+  return !!(
+    firebaseConfig.apiKey &&
+    firebaseConfig.authDomain &&
+    firebaseConfig.projectId &&
+    firebaseConfig.storageBucket &&
+    firebaseConfig.appId
+  );
+};
 
-// Initialize Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+// Initialize Firebase only if config is valid and not already initialized
+let app: FirebaseApp | undefined;
+let auth: Auth | undefined;
+let db: Firestore | undefined;
+let storage: FirebaseStorage | undefined;
+
+if (isConfigValid()) {
+  // Check if Firebase is already initialized
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+    console.log('Firebase initialized successfully');
+  } else {
+    app = getApps()[0];
+  }
+
+  // Initialize Firebase services
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+}
+
+// Export services (will be undefined if config is invalid)
+export { auth, db, storage };
 export default app;

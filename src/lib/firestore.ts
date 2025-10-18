@@ -41,7 +41,10 @@ export interface StorybookData {
 }
 
 export class FirestoreService {
-  private storybooksCollection = collection(db, 'storybooks');
+  private get storybooksCollection() {
+    if (!db) throw new Error('Firebase Firestore not initialized');
+    return collection(db, 'storybooks');
+  }
 
   // Save a new storybook
   async saveStorybook(
@@ -184,6 +187,7 @@ export class FirestoreService {
     generatedImageUrls: string[] = []
   ): Promise<void> {
     try {
+      if (!db) throw new Error('Firebase Firestore not initialized');
       const docRef = doc(db, 'storybooks', storybookId);
       
       // Get existing storybook to identify which images to delete
@@ -199,6 +203,7 @@ export class FirestoreService {
           existingData.input.images.map(async (image) => {
             if (!urlsToKeep.has(image.url)) {
               try {
+                if (!storage) throw new Error('Firebase Storage not initialized');
                 console.log('Deleting unused image:', image.url);
                 const imageRef = ref(storage, image.url);
                 await deleteObject(imageRef);
@@ -215,6 +220,7 @@ export class FirestoreService {
           await Promise.all(
             (existingData.output?.imageUrls || []).map(async (url) => {
               try {
+                if (!storage) throw new Error('Firebase Storage not initialized');
                 const imageRef = ref(storage, url);
                 await deleteObject(imageRef);
               } catch (error) {
@@ -358,6 +364,7 @@ export class FirestoreService {
   // Get a specific storybook
   async getStorybook(storybookId: string): Promise<StorybookData | null> {
     try {
+      if (!db) throw new Error('Firebase Firestore not initialized');
       const docRef = doc(db, 'storybooks', storybookId);
       const docSnap = await getDoc(docRef);
       
@@ -377,6 +384,7 @@ export class FirestoreService {
   // Delete a storybook
   async deleteStorybook(storybookId: string): Promise<void> {
     try {
+      if (!db) throw new Error('Firebase Firestore not initialized');
       const docRef = doc(db, 'storybooks', storybookId);
       
       // Get storybook data to clean up images
@@ -388,6 +396,7 @@ export class FirestoreService {
         await Promise.all(
           storybookData.input.images.map(async (image) => {
             try {
+              if (!storage) throw new Error('Firebase Storage not initialized');
               const imageRef = ref(storage, image.url);
               await deleteObject(imageRef);
             } catch (error) {
@@ -400,6 +409,7 @@ export class FirestoreService {
         await Promise.all(
           (storybookData.output?.imageUrls || []).map(async (url) => {
             try {
+              if (!storage) throw new Error('Firebase Storage not initialized');
               const imageRef = ref(storage, url);
               await deleteObject(imageRef);
             } catch (error) {
