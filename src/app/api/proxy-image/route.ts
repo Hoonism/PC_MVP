@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Ensure this route runs on Node.js runtime and is always dynamic
-export const runtime = 'nodejs';
+// Configure for Cloudflare Pages Edge Runtime
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {

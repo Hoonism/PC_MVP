@@ -1,6 +1,9 @@
 import * as fal from "@fal-ai/serverless-client";
 import { NextRequest, NextResponse } from 'next/server';
 
+// Configure for Cloudflare Pages Edge Runtime
+export const runtime = 'edge';
+
 // Configure fal.ai
 fal.config({
   credentials: "9b64ee01-61ed-41a5-b061-6892996478ae:049b9d6f3fe58a5048b8c09efcf8217b"

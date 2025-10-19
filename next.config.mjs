@@ -17,6 +17,8 @@ const nextConfig = {
         hostname: 'firebasestorage.googleapis.com',
       },
     ],
+    // Disable image optimization for Cloudflare Pages
+    unoptimized: true,
   },
 };
 

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getStorage, ref, uploadBytes, FirebaseStorage } from 'firebase/storage';
 
+// Configure for Cloudflare Pages Edge Runtime
+export const runtime = 'edge';
+
 // Firebase config (using environment variables)
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,

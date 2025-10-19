@@ -40,11 +40,13 @@ OPENAI_API_KEY
 
 ## Build Settings
 
-The build should work automatically with these settings:
-- **Build command**: `npm run build`
-- **Build output directory**: `.next`
+Configure these settings in your Cloudflare Pages project:
+- **Build command**: `npm run pages:build`
+- **Build output directory**: `.vercel/output/static`
 - **Root directory**: `text-image-app` (if deploying from monorepo)
 - **Node version**: 22.x (automatically detected)
+
+**Important**: Make sure to use `pages:build` command, NOT `build`. This uses the Cloudflare adapter to properly compile your Next.js app for Cloudflare Pages.
 
 ## Troubleshooting
 
