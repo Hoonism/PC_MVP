@@ -83,13 +83,6 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
               My Chats
             </h1>
-            <button
-              onClick={handleNewChat}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              New Chat
-            </button>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             View and manage your saved medical bill negotiation conversations

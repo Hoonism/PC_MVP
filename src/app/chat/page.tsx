@@ -171,6 +171,7 @@ function ChatPageContent() {
             content: msg.content,
           })),
           billFileName: selectedFile?.name,
+          userId: user?.uid, // Pass user ID for personalized prompting
         }),
       })
 
@@ -181,9 +182,19 @@ function ChatPageContent() {
       }
 
       const data = maybeJson
-      // Check if the response contains a draft message that should be copyable
       const content = data?.message || 'No response received.'
-      if (content.includes('Dear') && content.includes('Sincerely')) {
+      
+      // Check if the response contains a draft message that should be copyable
+      // Look for common professional message patterns
+      const isDraftMessage = 
+        (content.includes('Dear') || content.includes('To Whom It May Concern')) &&
+        (content.includes('Sincerely') || content.includes('Best regards') || 
+         content.includes('Respectfully') || content.includes('Thank you'))
+      
+      // Also detect if it's a structured message with subject line
+      const hasSubjectLine = content.includes('Subject:') || content.includes('Re:')
+      
+      if (isDraftMessage || hasSubjectLine) {
         setFinalMessage(content)
       }
       
