@@ -1,7 +1,11 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { Upload, X, Send, Copy, Check, Loader2, GripVertical } from 'lucide-react'
+import { useState, useRef, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Upload, X, Send, Copy, Check, Loader2, GripVertical, Save, Plus, FolderOpen } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { saveChat, updateChat, generateChatTitle, ChatSession, getChat } from '@/services/chatService'
+import SavedChats from '@/components/SavedChats'
 
 interface Message {
   id: string
@@ -21,7 +25,9 @@ function formatMarkdown(text: string) {
   })
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
+  const { user } = useAuth()
+  const searchParams = useSearchParams()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -38,9 +44,33 @@ export default function ChatPage() {
   const [copied, setCopied] = useState(false)
   const [leftWidth, setLeftWidth] = useState(50)
   const [isResizing, setIsResizing] = useState(false)
+  const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined)
+  const [isSaving, setIsSaving] = useState(false)
+  const [showSavedChats, setShowSavedChats] = useState(false)
+  const [saveKey, setSaveKey] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Load chat from URL parameter
+  useEffect(() => {
+    const chatId = searchParams.get('id')
+    if (chatId && user) {
+      loadChatById(chatId)
+    }
+  }, [searchParams, user])
+
+  const loadChatById = async (chatId: string) => {
+    try {
+      const chat = await getChat(chatId)
+      if (chat) {
+        setMessages(chat.messages)
+        setCurrentChatId(chat.id)
+      }
+    } catch (error) {
+      console.error('Error loading chat:', error)
+    }
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -232,98 +262,178 @@ export default function ChatPage() {
     }
   }
 
+  const handleSaveChat = async () => {
+    if (!user) {
+      alert('Please sign in to save chats')
+      return
+    }
+
+    if (messages.length <= 1) {
+      alert('No messages to save')
+      return
+    }
+
+    try {
+      setIsSaving(true)
+      const title = generateChatTitle(messages)
+
+      if (currentChatId) {
+        await updateChat(currentChatId, title, messages)
+      } else {
+        const chatId = await saveChat(user.uid, title, messages)
+        setCurrentChatId(chatId)
+      }
+
+      // Trigger refresh of saved chats
+      setSaveKey((prev) => prev + 1)
+      alert('Chat saved successfully!')
+    } catch (error) {
+      console.error('Error saving chat:', error)
+      alert('Failed to save chat')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleLoadChat = (chat: ChatSession) => {
+    setMessages(chat.messages)
+    setCurrentChatId(chat.id)
+    setShowSavedChats(false)
+  }
+
+  const handleNewChat = () => {
+    setMessages([
+      {
+        id: '1',
+        role: 'assistant',
+        content: 'Hello! Please upload your medical bill to get started.',
+        timestamp: new Date(),
+      },
+    ])
+    setCurrentChatId(undefined)
+    setSelectedFile(null)
+    setFinalMessage(null)
+    setShowSavedChats(false)
+  }
+
   return (
     <div ref={containerRef} className="h-full flex flex-row overflow-hidden bg-gray-50 dark:bg-gray-900">
-      {/* Left Panel - File Upload */}
+      {/* Left Panel - File Upload and Saved Chats */}
       <div 
         className="flex flex-col gap-4 h-full min-h-0 p-5 bg-white dark:bg-gray-800"
         style={{ width: `${leftWidth}%` }}
       >
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Upload Bill
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              {showSavedChats ? 'Saved Chats' : 'Upload Bill'}
+            </h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowSavedChats(!showSavedChats)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                title={showSavedChats ? 'Show Upload' : 'Show Saved Chats'}
+              >
+                {showSavedChats ? <Upload className="w-5 h-5" /> : <FolderOpen className="w-5 h-5" />}
+              </button>
+              {showSavedChats && (
+                <button
+                  onClick={handleNewChat}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  title="New Chat"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </div>
           
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`flex-1 min-h-0 border-2 border-dashed rounded transition-colors ${
-              isDragging
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10'
-                : 'border-gray-300 dark:border-gray-600'
-            }`}
-          >
-            {selectedFile ? (
-              <div className="h-full flex flex-col items-center justify-center p-6">
-                <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded p-5 w-full max-w-md">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-blue-100 dark:bg-blue-900/30 rounded flex items-center justify-center">
-                        <Upload className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          {showSavedChats ? (
+            <div className="flex-1 min-h-0 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded p-4">
+              <SavedChats key={saveKey} onLoadChat={handleLoadChat} currentChatId={currentChatId} />
+            </div>
+          ) : (
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`flex-1 min-h-0 border-2 border-dashed rounded transition-colors ${
+                isDragging
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10'
+                  : 'border-gray-300 dark:border-gray-600'
+              }`}
+            >
+              {selectedFile ? (
+                <div className="h-full flex flex-col items-center justify-center p-6">
+                  <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded p-5 w-full max-w-md">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-blue-100 dark:bg-blue-900/30 rounded flex items-center justify-center">
+                          <Upload className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px] text-sm">
+                            {selectedFile.name}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {(selectedFile.size / 1024).toFixed(2)} KB
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px] text-sm">
-                          {selectedFile.name}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {(selectedFile.size / 1024).toFixed(2)} KB
-                        </p>
-                      </div>
+                      <button
+                        onClick={removeFile}
+                        className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+                      >
+                        <X className="w-4 h-4 text-gray-500" />
+                      </button>
                     </div>
                     <button
-                      onClick={removeFile}
-                      className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+                      onClick={handleAnalyzeBill}
+                      disabled={isLoading}
+                      className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                     >
-                      <X className="w-4 h-4 text-gray-500" />
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        'Analyze Bill'
+                      )}
                     </button>
                   </div>
-                  <button
-                    onClick={handleAnalyzeBill}
-                    disabled={isLoading}
-                    className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+                  <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center mb-3">
+                    <Upload className="w-7 h-7 text-gray-400" />
+                  </div>
+                  <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">
+                    Drop file here
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    or click to browse
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    onChange={handleFileInputChange}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded cursor-pointer"
                   >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      'Analyze Bill'
-                    )}
-                  </button>
+                    Choose File
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                    JPG, PNG, or PDF
+                  </p>
                 </div>
-              </div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-                <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center mb-3">
-                  <Upload className="w-7 h-7 text-gray-400" />
-                </div>
-                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">
-                  Drop file here
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                  or click to browse
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.pdf"
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                  id="file-upload"
-                />
-                <label
-                  htmlFor="file-upload"
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded cursor-pointer"
-                >
-                  Choose File
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-                  JPG, PNG, or PDF
-                </p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
       {/* Resizable Divider */}
@@ -345,24 +455,45 @@ export default function ChatPage() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               Chat
             </h2>
-            {finalMessage && (
-              <button
-                onClick={copyToClipboard}
-                className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-3 h-3" />
-                    <span>Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3" />
-                    <span>Copy</span>
-                  </>
-                )}
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {user && messages.length > 1 && (
+                <button
+                  onClick={handleSaveChat}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium disabled:opacity-50"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3 h-3" />
+                      <span>{currentChatId ? 'Update' : 'Save'}</span>
+                    </>
+                  )}
+                </button>
+              )}
+              {finalMessage && (
+                <button
+                  onClick={copyToClipboard}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3 h-3" />
+                      <span>Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Messages (internal scroller) */}
@@ -417,5 +548,17 @@ export default function ChatPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    }>
+      <ChatPageContent />
+    </Suspense>
   )
 }

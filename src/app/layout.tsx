@@ -3,6 +3,7 @@ import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { Navbar } from '@/components/Navbar'
 import { Footer } from '@/components/Footer'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 export const metadata: Metadata = {
   title: 'BillNegotiate AI - Reduce Your Medical Bills',
@@ -18,11 +19,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <div className="flex flex-col h-screen overflow-hidden">
-            <Navbar />
-            <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
-            <Footer />
-          </div>
+          <AuthProvider>
+            <div className="flex flex-col h-screen overflow-hidden">
+              <Navbar />
+              <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
+              <Footer />
+            </div>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

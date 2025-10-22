@@ -1,7 +1,25 @@
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Upload, MessageSquare, FileCheck } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Home() {
+  const { user, loading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard')
+    }
+  }, [user, loading, router])
+
+  if (loading) {
+    return null // or a loading spinner
+  }
+
   return (
     <div className="flex flex-col overflow-y-auto">
       {/* Hero Section */}
