@@ -59,7 +59,7 @@ export default function SavedChats({ onLoadChat, currentChatId }: SavedChatsProp
 
   if (!user) {
     return (
-      <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+      <div className="p-4 text-center text-gray-400 text-sm">
         Sign in to save and view your chats
       </div>
     )
@@ -75,45 +75,42 @@ export default function SavedChats({ onLoadChat, currentChatId }: SavedChatsProp
 
   if (chats.length === 0) {
     return (
-      <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+      <div className="p-4 text-center text-gray-400 text-sm">
         No saved chats yet
       </div>
     )
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       {chats.map((chat) => (
         <div
           key={chat.id}
           onClick={() => onLoadChat(chat)}
-          className={`p-3 rounded cursor-pointer transition-colors group ${
+          className={`p-2.5 rounded-lg cursor-pointer transition-colors group ${
             currentChatId === chat.id
-              ? 'bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700'
-              : 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-transparent'
+              ? 'bg-gray-700'
+              : 'hover:bg-gray-700'
           }`}
         >
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-start gap-2 flex-1 min-w-0">
-              <MessageSquare className="w-4 h-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
+              <MessageSquare className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                <p className="text-sm text-gray-200 truncate">
                   {chat.title}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {new Date(chat.updatedAt).toLocaleDateString()}
                 </p>
               </div>
             </div>
             <button
               onClick={(e) => handleDelete(chat.id!, e)}
               disabled={deletingId === chat.id}
-              className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+              className="p-1 hover:bg-gray-600 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
             >
               {deletingId === chat.id ? (
-                <Loader2 className="w-4 h-4 text-red-600 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin" />
               ) : (
-                <Trash2 className="w-4 h-4 text-red-600" />
+                <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-400" />
               )}
             </button>
           </div>
