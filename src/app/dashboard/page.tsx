@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageSquare, Plus, Trash2, Loader2, Clock, FileText } from 'lucide-react'
+import { MessageSquare, Plus, Trash2, Loader2, Clock, FileText, Book } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getUserChats, deleteChat, ChatSession } from '@/services/chatService'
 
@@ -81,12 +81,56 @@ export default function DashboardPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-              My Chats
+              Dashboard
             </h1>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            View and manage your saved medical bill negotiation conversations
+            Manage your medical bill negotiations and pregnancy journey storybooks
           </p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <button
+            onClick={handleNewChat}
+            className="flex items-center gap-4 p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors text-left"
+          >
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <MessageSquare className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                Bill Negotiation
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Start a new medical bill negotiation chat
+              </p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => router.push('/dashboard/storybook')}
+            className="flex items-center gap-4 p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 transition-colors text-left"
+          >
+            <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <Book className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                Pregnancy Storybook
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Create AI-powered pregnancy journey storybooks
+              </p>
+            </div>
+          </button>
+        </div>
+
+        {/* Chats Section Header */}
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            My Chats
+          </h2>
         </div>
 
         {/* Stats */}

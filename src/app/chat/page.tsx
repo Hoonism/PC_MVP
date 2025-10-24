@@ -2,10 +2,12 @@
 
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Send, Loader2, Menu, X, Plus, FileText, Paperclip, Sparkles } from 'lucide-react'
+import Link from 'next/link'
+import { Send, Loader2, Menu, X, Plus, FileText, Paperclip, Sparkles, LogOut, Sun, Moon, User, Settings, HelpCircle, ChevronRight, Shield } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { saveChat, updateChat, generateChatTitle, ChatSession, getChat } from '@/services/chatService'
 import SavedChats from '@/components/SavedChats'
+import { useTheme } from 'next-themes'
 
 interface Message {
   id: string
@@ -35,15 +37,17 @@ const STARTER_PROMPTS = [
 ]
 
 function ChatPageContent() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const { theme, setTheme } = useTheme()
   const searchParams = useSearchParams()
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined)
   const [saveKey, setSaveKey] = useState(0)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -221,74 +225,144 @@ function ChatPageContent() {
   }
 
   return (
-    <div className="h-full flex flex-row overflow-hidden bg-[#212121]">
-      {/* Collapsible Sidebar */}
-      <div 
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#171717] transform transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="flex flex-col h-full">
-          {/* Sidebar Header */}
-          <div className="p-3 border-b border-gray-700">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-blue-500" />
-                <span className="text-lg font-semibold text-white">
-                  BillReduce
-                </span>
+    <div className="h-full flex flex-row overflow-hidden bg-gray-50 dark:bg-[#212121]">
+      {/* Sidebar - Side by Side */}
+      {sidebarOpen && (
+        <div className="w-64 bg-white dark:bg-[#171717] border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <div className="flex flex-col h-full">
+            {/* Sidebar Header */}
+            <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-500" />
+                  <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                    BillReduce
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  title="Close sidebar"
+                >
+                  <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </button>
               </div>
               <button
-                onClick={() => setSidebarOpen(false)}
-                className="p-1.5 hover:bg-gray-700 rounded"
+                onClick={handleNewChat}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-transparent border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white rounded text-sm transition-colors"
               >
-                <X className="w-5 h-5 text-gray-400" />
+                <Plus className="w-4 h-4" />
+                <span>New chat</span>
               </button>
             </div>
-            <button
-              onClick={handleNewChat}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-transparent border border-gray-600 hover:bg-gray-700 text-white rounded text-sm transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New chat</span>
-            </button>
-          </div>
 
-          {/* Saved Chats List */}
-          <div className="flex-1 overflow-y-auto p-2">
-            <SavedChats key={saveKey} onLoadChat={handleLoadChat} currentChatId={currentChatId} />
+            {/* Saved Chats List */}
+            <div className="flex-1 overflow-y-auto p-2">
+              <SavedChats key={saveKey} onLoadChat={handleLoadChat} currentChatId={currentChatId} />
+            </div>
+
+            {/* User Menu at Bottom */}
+            {user && (
+              <div className="border-t border-gray-200 dark:border-gray-700 p-2 relative">
+                {userMenuOpen && (
+                  <div className="absolute bottom-full left-2 right-2 mb-2 bg-white dark:bg-[#2f2f2f] border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
+                    <button 
+                      onClick={() => {
+                        setTheme(theme === 'dark' ? 'light' : 'dark')
+                        setUserMenuOpen(false)
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+                    >
+                      {theme === 'dark' ? (
+                        <Sun className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                      ) : (
+                        <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                      )}
+                      <span className="text-sm text-gray-900 dark:text-gray-200">
+                        {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                      </span>
+                    </button>
+                    <div className="border-t border-gray-200 dark:border-gray-700">
+                      <Link
+                        href="/privacy"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+                      >
+                        <Shield className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        <span className="text-sm text-gray-900 dark:text-gray-200">Privacy Policy</span>
+                      </Link>
+                      <Link
+                        href="/terms"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+                      >
+                        <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        <span className="text-sm text-gray-900 dark:text-gray-200">Terms of Service</span>
+                      </Link>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        logout()
+                        setUserMenuOpen(false)
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left border-t border-gray-200 dark:border-gray-700"
+                    >
+                      <LogOut className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                      <span className="text-sm text-gray-900 dark:text-gray-200">Log out</span>
+                    </button>
+                  </div>
+                )}
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-sm text-gray-900 dark:text-gray-200 truncate">
+                      {user.email}
+                    </span>
+                  </div>
+                  <ChevronRight className={`w-4 h-4 text-gray-600 dark:text-gray-400 transition-transform ${userMenuOpen ? 'rotate-90' : ''}`} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      </div>
-
-      {/* Overlay when sidebar is open */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={() => setSidebarOpen(false)}
-        />
       )}
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden">
         {/* Top Bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#212121]">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 hover:bg-gray-700 rounded transition-colors"
-            >
-              <Menu className="w-5 h-5 text-gray-400" />
-            </button>
-            <h2 className="text-lg font-semibold text-white">
+            {!sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                title="Open sidebar"
+              >
+                <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
+            )}
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               BillReduce AI
             </h2>
           </div>
-          {user && (
-            <div className="text-sm text-gray-400">
-              {user.email}
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              ) : (
+                <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Messages Area */}
@@ -300,10 +374,10 @@ function ChatPageContent() {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
                   <Sparkles className="w-8 h-8 text-white" />
                 </div>
-                <h1 className="text-3xl font-bold text-white mb-2">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                   How can I help you today?
                 </h1>
-                <p className="text-gray-400">
+                <p className="text-gray-600 dark:text-gray-400">
                   I'm here to help you negotiate and reduce your medical bills
                 </p>
               </div>
@@ -313,10 +387,10 @@ function ChatPageContent() {
                   <button
                     key={index}
                     onClick={() => handleStarterPrompt(prompt.title)}
-                    className="p-4 bg-[#2f2f2f] hover:bg-[#3f3f3f] rounded-lg text-left transition-colors border border-gray-700"
+                    className="p-4 bg-white dark:bg-[#2f2f2f] hover:bg-gray-50 dark:hover:bg-[#3f3f3f] rounded-lg text-left transition-colors border border-gray-200 dark:border-gray-700"
                   >
-                    <div className="text-white font-medium mb-1">{prompt.title}</div>
-                    <div className="text-sm text-gray-400">{prompt.description}</div>
+                    <div className="text-gray-900 dark:text-white font-medium mb-1">{prompt.title}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">{prompt.description}</div>
                   </button>
                 ))}
               </div>
@@ -335,14 +409,14 @@ function ChatPageContent() {
                         <Sparkles className="w-4 h-4 text-white" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-white whitespace-pre-wrap leading-relaxed">
+                        <div className="text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed">
                           {message.content}
                         </div>
                       </div>
                     </div>
                   )}
                   {message.role === 'user' && (
-                    <div className="max-w-[80%] bg-[#2f2f2f] rounded-2xl px-4 py-3">
+                    <div className="max-w-[80%] bg-blue-600 dark:bg-[#2f2f2f] rounded-2xl px-4 py-3">
                       <div className="text-white whitespace-pre-wrap">
                         {message.content}
                       </div>
@@ -356,7 +430,7 @@ function ChatPageContent() {
                     <Sparkles className="w-4 h-4 text-white" />
                   </div>
                   <div className="flex items-center">
-                    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                    <Loader2 className="w-5 h-5 animate-spin text-gray-600 dark:text-gray-400" />
                   </div>
                 </div>
               )}
@@ -366,12 +440,12 @@ function ChatPageContent() {
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-700 p-4">
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-[#212121]">
           <div className="max-w-3xl mx-auto">
             {selectedFile && (
-              <div className="mb-2 flex items-center gap-2 px-3 py-2 bg-[#2f2f2f] rounded-lg">
+              <div className="mb-2 flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-[#2f2f2f] rounded-lg">
                 <Paperclip className="w-4 h-4 text-blue-500" />
-                <span className="text-sm text-gray-300 flex-1 truncate">
+                <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate">
                   {selectedFile.name}
                 </span>
                 <span className="text-xs text-gray-500">
@@ -379,13 +453,13 @@ function ChatPageContent() {
                 </span>
                 <button
                   onClick={removeFile}
-                  className="p-1 hover:bg-gray-700 rounded"
+                  className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
                 >
-                  <X className="w-4 h-4 text-gray-400" />
+                  <X className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 </button>
               </div>
             )}
-            <div className="flex gap-2 items-end bg-[#2f2f2f] rounded-2xl p-2">
+            <div className="flex gap-2 items-end bg-gray-100 dark:bg-[#2f2f2f] rounded-2xl p-2 border border-gray-200 dark:border-gray-700">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -396,10 +470,10 @@ function ChatPageContent() {
               />
               <label
                 htmlFor="file-upload"
-                className="p-2 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
+                className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
                 title="Attach file"
               >
-                <Paperclip className="w-5 h-5 text-gray-400" />
+                <Paperclip className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </label>
               <textarea
                 value={inputValue}
@@ -408,18 +482,18 @@ function ChatPageContent() {
                 placeholder="Message BillReduce AI..."
                 disabled={isLoading}
                 rows={1}
-                className="flex-1 bg-transparent text-white placeholder-gray-500 resize-none outline-none px-2 py-2 max-h-32"
+                className="flex-1 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 resize-none outline-none px-2 py-2 max-h-32"
                 style={{ minHeight: '24px' }}
               />
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!inputValue.trim() || isLoading}
-                className="p-2 bg-white hover:bg-gray-200 text-black rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-2 bg-blue-600 hover:bg-blue-700 dark:bg-white dark:hover:bg-gray-200 text-white dark:text-black rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Send className="w-5 h-5" />
               </button>
             </div>
-            <div className="text-xs text-gray-500 text-center mt-2">
+            <div className="text-xs text-gray-500 dark:text-gray-500 text-center mt-2">
               BillReduce AI can make mistakes. Check important info.
             </div>
           </div>

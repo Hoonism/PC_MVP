@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       return "I'm here to help you negotiate your medical bills. Could you tell me more about your situation?"
     }
 
-    // Format messages for the API (using proper chat format)
+    // Format messages for the API
     const chatMessages = [
       { role: 'system', content: systemPrompt },
       // Add few-shot examples for better quality (only for first few messages)
@@ -93,14 +93,25 @@ export async function POST(request: NextRequest) {
       })),
     ]
 
+    // Convert chat messages to a single prompt string
+    const prompt = chatMessages.map(msg => {
+      if (msg.role === 'system') {
+        return `System: ${msg.content}`
+      } else if (msg.role === 'user') {
+        return `User: ${msg.content}`
+      } else if (msg.role === 'assistant') {
+        return `Assistant: ${msg.content}`
+      }
+      return msg.content
+    }).join('\n\n') + '\n\nAssistant:'
+
     // Call fal.ai any-llm with GPT-5 model
     const result: any = await fal.subscribe('fal-ai/any-llm', {
       input: {
         model: 'openai/gpt-5-chat',
-        messages: chatMessages,
+        prompt: prompt,
         max_tokens: 1500,
         temperature: 0.7,
-        priority: 'latency',
       },
       logs: true,
       onQueueUpdate: (update: any) => {
