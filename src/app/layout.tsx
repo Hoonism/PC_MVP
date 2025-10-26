@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { Navbar } from '@/components/Navbar'
 
 export const metadata: Metadata = {
   title: 'BillNegotiate AI - Reduce Your Medical Bills',
@@ -18,8 +19,9 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
-            <div className="flex flex-col h-screen overflow-hidden">
-              <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
+            <div className="flex flex-col h-screen">
+              <Navbar />
+              <main className="flex-1 overflow-y-auto">{children}</main>
             </div>
           </AuthProvider>
         </ThemeProvider>
