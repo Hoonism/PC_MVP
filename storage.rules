@@ -1,0 +1,28 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Storybook images - users can only access their own folder
+    match /storybooks/{userId}/{allPaths=**} {
+      // Allow read if authenticated (for public sharing later, you can make this more permissive)
+      allow read: if isAuthenticated();
+      
+      // Allow write only to own folder
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Allow delete only own files
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Default deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

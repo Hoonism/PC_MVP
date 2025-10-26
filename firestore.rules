@@ -28,6 +28,21 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
     
+    // Storybooks collection rules
+    match /storybooks/{storybookId} {
+      // Allow read if user is authenticated and owns the storybook
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Allow create if user is authenticated and setting their own userId
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Allow update if user owns the storybook
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Allow delete if user owns the storybook
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
     // User profiles collection rules (if you add this later)
     match /userProfiles/{userId} {
       allow read: if isOwner(userId);
