@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ThemeToggle } from './ThemeToggle'
-import { FileText, LogIn, LogOut, User, LayoutDashboard, MessageSquare } from 'lucide-react'
+import { FileText, LogIn, LogOut, User, LayoutDashboard, MessageSquare, Book } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import AuthModal from './AuthModal'
 
@@ -47,7 +47,18 @@ export function Navbar() {
                     }`}
                   >
                     <MessageSquare className="w-4 h-4" />
-                    <span className="hidden sm:inline">Chat</span>
+                    <span className="hidden sm:inline">Bill Chat</span>
+                  </Link>
+                  <Link
+                    href="/dashboard/storybook"
+                    className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors ${
+                      pathname?.startsWith('/dashboard/storybook')
+                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <Book className="w-4 h-4" />
+                    <span className="hidden sm:inline">Storybook</span>
                   </Link>
                 </div>
               )}
