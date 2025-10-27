@@ -50,9 +50,9 @@ export function Navbar() {
                     <span className="hidden sm:inline">Bill Chat</span>
                   </Link>
                   <Link
-                    href="/dashboard/storybook"
+                    href="/storybook"
                     className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors ${
-                      pathname?.startsWith('/dashboard/storybook')
+                      pathname?.startsWith('/storybook')
                         ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}

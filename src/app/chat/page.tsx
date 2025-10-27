@@ -82,7 +82,7 @@ function ChatPageContent() {
 
   // Auto-save effect
   useEffect(() => {
-    if (!user || messages.length === 0 || isLoading) {
+    if (!user || messages.length === 0) {
       return
     }
 
@@ -99,7 +99,8 @@ function ChatPageContent() {
         clearTimeout(autoSaveTimeoutRef.current)
       }
     }
-  }, [messages, user, isLoading])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, user])
 
   const autoSaveChat = async () => {
     if (!user || messages.length === 0) return
@@ -232,21 +233,24 @@ function ChatPageContent() {
           <div className="flex flex-col h-full">
             {/* Sidebar Header */}
             <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-500" />
-                  <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                    BillReduce
-                  </span>
-                </div>
+              <div className="flex items-center justify-between">
                 <button
                   onClick={() => setSidebarOpen(false)}
-                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded ml-auto"
                   title="Close sidebar"
                 >
                   <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 </button>
               </div>
+            </div>
+
+            {/* Saved Chats List */}
+            <div className="flex-1 overflow-y-auto p-2">
+              <SavedChats key={saveKey} onLoadChat={handleLoadChat} currentChatId={currentChatId} />
+            </div>
+
+            {/* New Chat Button */}
+            <div className="p-3 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={handleNewChat}
                 className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-transparent border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white rounded text-sm transition-colors"
@@ -254,11 +258,6 @@ function ChatPageContent() {
                 <Plus className="w-4 h-4" />
                 <span>New chat</span>
               </button>
-            </div>
-
-            {/* Saved Chats List */}
-            <div className="flex-1 overflow-y-auto p-2">
-              <SavedChats key={saveKey} onLoadChat={handleLoadChat} currentChatId={currentChatId} />
             </div>
 
             {/* User Menu at Bottom */}
@@ -349,19 +348,6 @@ function ChatPageContent() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               BillReduce AI
             </h2>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              ) : (
-                <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              )}
-            </button>
           </div>
         </div>
 

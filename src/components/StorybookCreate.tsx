@@ -202,7 +202,7 @@ export default function StorybookCreate({ storybookId }: StorybookCreateProps) {
       }
 
       alert('Storybook saved successfully!')
-      router.push('/dashboard/storybook')
+      router.push('/storybook')
     } catch (error) {
       console.error('Error saving storybook:', error)
       alert('Failed to save storybook. Please try again.')
@@ -212,13 +212,13 @@ export default function StorybookCreate({ storybookId }: StorybookCreateProps) {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-[#212121]">
+      <div className="bg-white dark:bg-[#2f2f2f] border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => router.push('/dashboard/storybook')}
+                onClick={() => router.push('/storybook')}
                 className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
               >
                 <ArrowLeft className="w-4 h-4" />

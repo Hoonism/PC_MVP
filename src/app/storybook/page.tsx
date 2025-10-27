@@ -58,11 +58,11 @@ export default function StorybookDashboard() {
   }
 
   const handleStorybookClick = (storybookId: string) => {
-    router.push(`/dashboard/storybook/create?id=${storybookId}`)
+    router.push(`/storybook/create?id=${storybookId}`)
   }
 
   const handleNewStorybook = () => {
-    router.push('/dashboard/storybook/create')
+    router.push('/storybook/create')
   }
 
   const handleBackToDashboard = () => {
@@ -78,41 +78,39 @@ export default function StorybookDashboard() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-6xl mx-auto p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <button
-                onClick={handleBackToDashboard}
-                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-2 flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                Back to Dashboard
-              </button>
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                My Storybooks
-              </h1>
-            </div>
-            <button
-              onClick={handleNewStorybook}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              New Storybook
-            </button>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Create and manage your AI-powered pregnancy journey storybooks
-          </p>
+    <div className="h-full flex flex-col overflow-hidden bg-gray-50 dark:bg-[#212121]">
+      {/* Header Bar */}
+      <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#212121]">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleBackToDashboard}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            title="Back to Dashboard"
+          >
+            <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+            My Storybooks
+          </h1>
         </div>
+        <button
+          onClick={handleNewStorybook}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          New Storybook
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-6xl mx-auto p-6">
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white dark:bg-gray-800 rounded p-5 border border-gray-200 dark:border-gray-700">
+          <div className="bg-white dark:bg-[#2f2f2f] rounded p-5 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded">
                 <Book className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -126,7 +124,7 @@ export default function StorybookDashboard() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded p-5 border border-gray-200 dark:border-gray-700">
+          <div className="bg-white dark:bg-[#2f2f2f] rounded p-5 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-green-100 dark:bg-green-900/30 rounded">
                 <ImageIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
@@ -140,7 +138,7 @@ export default function StorybookDashboard() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded p-5 border border-gray-200 dark:border-gray-700">
+          <div className="bg-white dark:bg-[#2f2f2f] rounded p-5 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-purple-100 dark:bg-purple-900/30 rounded">
                 <Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -165,7 +163,7 @@ export default function StorybookDashboard() {
             <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
           </div>
         ) : storybooks.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-12 text-center">
+          <div className="bg-white dark:bg-[#2f2f2f] rounded border border-gray-200 dark:border-gray-700 p-12 text-center">
             <Book className="w-14 h-14 text-gray-400 mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
               No storybooks yet
@@ -187,7 +185,7 @@ export default function StorybookDashboard() {
               <div
                 key={storybook.id}
                 onClick={() => handleStorybookClick(storybook.id!)}
-                className="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:border-blue-500 dark:hover:border-blue-500 transition-colors group"
+                className="bg-white dark:bg-[#2f2f2f] rounded border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:border-purple-500 dark:hover:border-purple-500 transition-colors group"
               >
                 {/* Image Preview */}
                 {storybook.input?.images && storybook.input.images.length > 0 && (
@@ -246,6 +244,7 @@ export default function StorybookDashboard() {
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   )
