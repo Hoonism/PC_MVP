@@ -43,6 +43,10 @@ export async function saveChat(
   title: string,
   messages: Message[]
 ): Promise<string> {
+  if (!db) {
+    throw new Error('Firebase Firestore not initialized')
+  }
+
   const chatData = {
     userId,
     title,
@@ -67,6 +71,10 @@ export async function updateChat(
   title: string,
   messages: Message[]
 ): Promise<void> {
+  if (!db) {
+    throw new Error('Firebase Firestore not initialized')
+  }
+
   const chatRef = doc(db, COLLECTION_NAME, chatId)
   await updateDoc(chatRef, {
     title,
@@ -82,6 +90,10 @@ export async function updateChat(
  * Delete a chat session
  */
 export async function deleteChat(chatId: string): Promise<void> {
+  if (!db) {
+    throw new Error('Firebase Firestore not initialized')
+  }
+
   const chatRef = doc(db, COLLECTION_NAME, chatId)
   await deleteDoc(chatRef)
 }
@@ -90,6 +102,12 @@ export async function deleteChat(chatId: string): Promise<void> {
  * Get all chat sessions for a user (filtered by BillReduce label)
  */
 export async function getUserChats(userId: string): Promise<ChatSession[]> {
+  if (!db) {
+    throw new Error('Firebase Firestore not initialized')
+  }
+
+  console.log('getUserChats called with userId:', userId, 'projectLabel:', PROJECT_LABEL)
+
   const q = query(
     collection(db, COLLECTION_NAME),
     where('userId', '==', userId),
@@ -98,10 +116,12 @@ export async function getUserChats(userId: string): Promise<ChatSession[]> {
   )
 
   const querySnapshot = await getDocs(q)
+  console.log('Query returned', querySnapshot.size, 'documents')
   const chats: ChatSession[] = []
 
   querySnapshot.forEach((doc) => {
     const data = doc.data()
+    console.log('Processing chat document:', doc.id, data)
     chats.push({
       id: doc.id,
       userId: data.userId,
@@ -116,6 +136,7 @@ export async function getUserChats(userId: string): Promise<ChatSession[]> {
     })
   })
 
+  console.log('Returning', chats.length, 'chats')
   return chats
 }
 
@@ -123,6 +144,10 @@ export async function getUserChats(userId: string): Promise<ChatSession[]> {
  * Get a specific chat session by ID
  */
 export async function getChat(chatId: string): Promise<ChatSession | null> {
+  if (!db) {
+    throw new Error('Firebase Firestore not initialized')
+  }
+
   const chatRef = doc(db, COLLECTION_NAME, chatId)
   const chatDoc = await getDoc(chatRef)
 

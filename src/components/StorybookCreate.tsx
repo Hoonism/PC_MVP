@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { storybookService, StorybookData } from '@/services/storybookService'
@@ -43,12 +43,37 @@ export default function StorybookCreate({ storybookId }: StorybookCreateProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [isLoadingStoredImages, setIsLoadingStoredImages] = useState(false)
   const [initialData, setInitialData] = useState<StorybookData | null>(null)
+  const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null)
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isAutoSavingRef = useRef(false)
 
   useEffect(() => {
     if (storybookId && user) {
       loadStorybook(storybookId)
     }
   }, [storybookId, user])
+
+  // Auto-save effect
+  useEffect(() => {
+    if (!user || !storybookName.trim()) {
+      return
+    }
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
+
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSaveStorybook()
+    }, 3000) // 3 second debounce
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, storybookName, generatedText, imagesWithCaptions, user])
 
   const loadStorybook = async (id: string) => {
     try {
@@ -100,6 +125,70 @@ export default function StorybookCreate({ storybookId }: StorybookCreateProps) {
       }
     } catch (error) {
       console.error('Error loading storybook:', error)
+    }
+  }
+
+  const autoSaveStorybook = async () => {
+    if (!user || !storybookName.trim()) return
+    
+    // Prevent concurrent saves
+    if (isAutoSavingRef.current || isSaving) return
+    isAutoSavingRef.current = true
+
+    try {
+      const captions = imagesWithCaptions.map((img) => img.caption)
+      const existingImageUrls: string[] = []
+      const generatedImageUrls: string[] = []
+
+      imagesWithCaptions.forEach((img, index) => {
+        if (img.existingUrl) {
+          const isAlreadySaved = initialData && initialData.input?.images?.[index]?.url === img.existingUrl
+          if (isAlreadySaved) {
+            existingImageUrls.push(img.existingUrl)
+          } else {
+            existingImageUrls.push('')
+            generatedImageUrls.push(img.existingUrl)
+          }
+        } else {
+          existingImageUrls.push('')
+        }
+      })
+
+      const saveData = {
+        ...formData,
+        captions,
+        existingImageUrls
+      }
+
+      if (initialData && initialData.id) {
+        await storybookService.updateStorybook(
+          initialData.id,
+          user.uid,
+          storybookName,
+          saveData,
+          generatedText,
+          generatedImageUrls
+        )
+      } else {
+        const newId = await storybookService.saveStorybook(
+          user.uid,
+          storybookName,
+          saveData,
+          generatedText,
+          generatedImageUrls
+        )
+        // Update initialData so future saves are updates
+        if (!initialData) {
+          const savedStorybook = await storybookService.getStorybook(newId)
+          setInitialData(savedStorybook)
+        }
+      }
+
+      setLastAutoSave(new Date())
+    } catch (error) {
+      console.error('Auto-save failed:', error)
+    } finally {
+      isAutoSavingRef.current = false
     }
   }
 
@@ -186,7 +275,11 @@ export default function StorybookCreate({ storybookId }: StorybookCreateProps) {
         }
       })
 
-      const saveData = { ...formData, existingImageUrls } as any
+      const saveData = {
+        ...formData,
+        captions,
+        existingImageUrls
+      }
 
       if (initialData && initialData.id) {
         await storybookService.updateStorybook(
@@ -198,9 +291,13 @@ export default function StorybookCreate({ storybookId }: StorybookCreateProps) {
           generatedImageUrls
         )
       } else {
-        await storybookService.saveStorybook(user.uid, storybookName, saveData, generatedText, generatedImageUrls)
+        const newId = await storybookService.saveStorybook(user.uid, storybookName, saveData, generatedText, generatedImageUrls)
+        // Update initialData so it becomes an update next time
+        const savedStorybook = await storybookService.getStorybook(newId)
+        setInitialData(savedStorybook)
       }
 
+      setLastAutoSave(new Date())
       alert('Storybook saved successfully!')
       router.push('/storybook')
     } catch (error) {
@@ -224,9 +321,16 @@ export default function StorybookCreate({ storybookId }: StorybookCreateProps) {
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back</span>
               </button>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                {initialData ? 'Edit Storybook' : 'New Storybook'}
-              </h1>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  {initialData ? 'Edit Storybook' : 'New Storybook'}
+                </h1>
+                {lastAutoSave && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Auto-saved at {lastAutoSave.toLocaleTimeString()}
+                  </p>
+                )}
+              </div>
             </div>
             <button
               onClick={handleSave}

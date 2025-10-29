@@ -25,10 +25,15 @@ export default function SavedChats({ onLoadChat, currentChatId }: SavedChatsProp
 
     try {
       setLoading(true)
+      console.log('Loading chats for user:', user.uid)
       const userChats = await getUserChats(user.uid)
+      console.log('Loaded chats:', userChats.length, userChats)
       setChats(userChats)
     } catch (error) {
       console.error('Error loading chats:', error)
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack)
+      }
     } finally {
       setLoading(false)
     }

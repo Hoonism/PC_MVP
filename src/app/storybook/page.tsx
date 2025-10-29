@@ -147,7 +147,10 @@ export default function StorybookDashboard() {
                 <p className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                   {storybooks.length > 0
                     ? new Date(
-                        Math.max(...storybooks.map((c) => new Date(c.updatedAt.toDate()).getTime()))
+                        Math.max(...storybooks.map((c) => {
+                          const date = c.updatedAt?.toDate ? c.updatedAt.toDate() : new Date(c.updatedAt as any)
+                          return date.getTime()
+                        }))
                       ).toLocaleDateString()
                     : 'N/A'}
                 </p>

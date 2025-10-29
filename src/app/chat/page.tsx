@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { saveChat, updateChat, generateChatTitle, ChatSession, getChat } from '@/services/chatService'
 import SavedChats from '@/components/SavedChats'
 import { useTheme } from 'next-themes'
+import ReactMarkdown from 'react-markdown'
 
 interface Message {
   id: string
@@ -48,9 +49,11 @@ function ChatPageContent() {
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined)
   const [saveKey, setSaveKey] = useState(0)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isSavingRef = useRef(false)
 
   // Load chat from URL parameter
   useEffect(() => {
@@ -104,20 +107,43 @@ function ChatPageContent() {
 
   const autoSaveChat = async () => {
     if (!user || messages.length === 0) return
+    
+    // Prevent concurrent saves
+    if (isSavingRef.current) return
+    isSavingRef.current = true
+    setAutoSaveStatus('saving')
 
     try {
       const title = generateChatTitle(messages)
 
       if (currentChatId) {
+        console.log('Auto-saving existing chat:', currentChatId)
         await updateChat(currentChatId, title, messages)
+        console.log('Chat updated successfully')
       } else {
+        console.log('Creating new chat...')
         const chatId = await saveChat(user.uid, title, messages)
+        console.log('New chat created with ID:', chatId)
         setCurrentChatId(chatId)
       }
 
       setSaveKey((prev) => prev + 1)
+      setAutoSaveStatus('saved')
+      
+      // Reset to idle after 2 seconds
+      setTimeout(() => setAutoSaveStatus('idle'), 2000)
     } catch (error) {
       console.error('Auto-save failed:', error)
+      // Show error details for debugging
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack)
+      }
+      setAutoSaveStatus('error')
+      
+      // Reset to idle after 3 seconds
+      setTimeout(() => setAutoSaveStatus('idle'), 3000)
+    } finally {
+      isSavingRef.current = false
     }
   }
 
@@ -345,9 +371,13 @@ function ChatPageContent() {
                 <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
             )}
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              BillReduce AI
-            </h2>
+            {autoSaveStatus !== 'idle' && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {autoSaveStatus === 'saving' && '💾 Saving...'}
+                {autoSaveStatus === 'saved' && '✓ Saved'}
+                {autoSaveStatus === 'error' && '⚠️ Save failed'}
+              </p>
+            )}
           </div>
         </div>
 
@@ -395,8 +425,18 @@ function ChatPageContent() {
                         <Sparkles className="w-4 h-4 text-white" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed">
-                          {message.content}
+                        <div className="text-gray-900 dark:text-white leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                          <ReactMarkdown
+                            components={{
+                              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                              ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                              ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                              li: ({ children }) => <li className="mb-1">{children}</li>,
+                            }}
+                          >
+                            {message.content}
+                          </ReactMarkdown>
                         </div>
                       </div>
                     </div>
