@@ -1,5 +1,17 @@
 'use client'
 
+/**
+ * EXAMPLE: Refactored Chat Page using Zustand
+ * 
+ * This is a demonstration of how to migrate the chat page to use Zustand stores.
+ * Benefits:
+ * - Centralized state management
+ * - Easier testing
+ * - Better performance (selective re-renders)
+ * - Less prop drilling
+ * - Persistent state (sidebar preference)
+ */
+
 import { useState, useRef, useEffect, Suspense, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -9,6 +21,9 @@ import { saveChat, updateChat, generateChatTitle, ChatSession, getChat } from '@
 import SavedChats from '@/components/SavedChats'
 import { useTheme } from 'next-themes'
 import ReactMarkdown from 'react-markdown'
+
+// Zustand stores
+import { useChatStore, useUIStore, useNotificationStore } from '@/stores'
 
 interface Message {
   id: string
@@ -37,19 +52,38 @@ const STARTER_PROMPTS = [
   }
 ]
 
-function ChatPageContent() {
+function ChatPageContentRefactored() {
   const { user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
   const searchParams = useSearchParams()
-  const [messages, setMessages] = useState<Message[]>([])
+  
+  // Zustand stores - notice how clean this is!
+  const {
+    messages,
+    currentChatId,
+    selectedFile,
+    isLoading,
+    autoSaveStatus,
+    setMessages,
+    addMessage,
+    setCurrentChatId,
+    setSelectedFile,
+    setIsLoading,
+    setAutoSaveStatus,
+    resetChat,
+  } = useChatStore()
+  
+  const {
+    sidebarOpen,
+    userMenuOpen,
+    setSidebarOpen,
+    setUserMenuOpen,
+  } = useUIStore()
+  
+  const { success, error: notifyError } = useNotificationStore()
+  
   const [inputValue, setInputValue] = useState('')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined)
   const [saveKey, setSaveKey] = useState(0)
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -70,8 +104,9 @@ function ChatPageContent() {
         setMessages(chat.messages)
         setCurrentChatId(chat.id)
       }
-    } catch (error) {
-      console.error('Error loading chat:', error)
+    } catch (err) {
+      console.error('Error loading chat:', err)
+      notifyError('Failed to load chat')
     }
   }
 
@@ -102,13 +137,11 @@ function ChatPageContent() {
         clearTimeout(autoSaveTimeoutRef.current)
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, user])
 
   const autoSaveChat = useCallback(async () => {
     if (!user || messages.length === 0) return
     
-    // Prevent concurrent saves
     if (isSavingRef.current) return
     isSavingRef.current = true
     setAutoSaveStatus('saving')
@@ -126,18 +159,15 @@ function ChatPageContent() {
       setSaveKey((prev) => prev + 1)
       setAutoSaveStatus('saved')
       
-      // Reset to idle after 2 seconds
       setTimeout(() => setAutoSaveStatus('idle'), 2000)
-    } catch (error) {
-      console.error('Auto-save failed:', error)
+    } catch (err) {
+      console.error('Auto-save failed:', err)
       setAutoSaveStatus('error')
-      
-      // Reset to idle after 3 seconds
       setTimeout(() => setAutoSaveStatus('idle'), 3000)
     } finally {
       isSavingRef.current = false
     }
-  }, [user, messages, currentChatId])
+  }, [user, messages, currentChatId, setAutoSaveStatus, setCurrentChatId])
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -146,18 +176,19 @@ function ChatPageContent() {
       const maxSize = 10 * 1024 * 1024 // 10MB
       
       if (!validTypes.includes(file.type)) {
-        alert('Please upload a valid file type (JPG, PNG, or PDF)')
+        notifyError('Please upload a valid file type (JPG, PNG, or PDF)')
         if (fileInputRef.current) fileInputRef.current.value = ''
         return
       }
       
       if (file.size > maxSize) {
-        alert('File size must be less than 10MB')
+        notifyError('File size must be less than 10MB')
         if (fileInputRef.current) fileInputRef.current.value = ''
         return
       }
       
       setSelectedFile(file)
+      success('File attached successfully')
     }
   }
 
@@ -196,9 +227,10 @@ function ChatPageContent() {
       const content = data?.message || 'No response received.'
       
       return content
-    } catch (error: any) {
-      console.error('Error calling AI API:', error)
-      const message = typeof error?.message === 'string' ? error.message : 'Unknown error'
+    } catch (err: any) {
+      console.error('Error calling AI API:', err)
+      const message = typeof err?.message === 'string' ? err.message : 'Unknown error'
+      notifyError(`Connection error: ${message}`)
       return `Connection error: ${message}`
     }
   }
@@ -213,19 +245,20 @@ function ChatPageContent() {
       content: textToSend,
       timestamp: new Date(),
     }
-    const updatedMessages = [...messages, userMessage]
-    setMessages(updatedMessages)
+    
+    addMessage(userMessage)
     setInputValue('')
     setIsLoading(true)
 
-    const response = await getAIResponse(updatedMessages)
+    const response = await getAIResponse([...messages, userMessage])
     const aiMessage: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
       content: response,
       timestamp: new Date(),
     }
-    setMessages([...updatedMessages, aiMessage])
+    
+    addMessage(aiMessage)
     setIsLoading(false)
   }
 
@@ -243,10 +276,9 @@ function ChatPageContent() {
   }
 
   const handleNewChat = () => {
-    setMessages([])
-    setCurrentChatId(undefined)
-    setSelectedFile(null)
+    resetChat()
     setSidebarOpen(false)
+    success('New chat started')
   }
 
   const handleStarterPrompt = (prompt: string) => {
@@ -288,74 +320,6 @@ function ChatPageContent() {
                 <span>New chat</span>
               </button>
             </div>
-
-            {/* User Menu at Bottom */}
-            {user && (
-              <div className="border-t border-gray-200 dark:border-gray-700 p-2 relative">
-                {userMenuOpen && (
-                  <div className="absolute bottom-full left-2 right-2 mb-2 bg-white dark:bg-[#2f2f2f] border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
-                    <button 
-                      onClick={() => {
-                        setTheme(theme === 'dark' ? 'light' : 'dark')
-                        setUserMenuOpen(false)
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
-                    >
-                      {theme === 'dark' ? (
-                        <Sun className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                      ) : (
-                        <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                      )}
-                      <span className="text-sm text-gray-900 dark:text-gray-200">
-                        {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-                      </span>
-                    </button>
-                    <div className="border-t border-gray-200 dark:border-gray-700">
-                      <Link
-                        href="/privacy"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
-                      >
-                        <Shield className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                        <span className="text-sm text-gray-900 dark:text-gray-200">Privacy Policy</span>
-                      </Link>
-                      <Link
-                        href="/terms"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
-                      >
-                        <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                        <span className="text-sm text-gray-900 dark:text-gray-200">Terms of Service</span>
-                      </Link>
-                    </div>
-                    <button 
-                      onClick={() => {
-                        logout()
-                        setUserMenuOpen(false)
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left border-t border-gray-200 dark:border-gray-700"
-                    >
-                      <LogOut className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                      <span className="text-sm text-gray-900 dark:text-gray-200">Log out</span>
-                    </button>
-                  </div>
-                )}
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <User className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="text-sm text-gray-900 dark:text-gray-200 truncate">
-                      {user.email}
-                    </span>
-                  </div>
-                  <ChevronRight className={`w-4 h-4 text-gray-600 dark:text-gray-400 transition-transform ${userMenuOpen ? 'rotate-90' : ''}`} />
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -536,14 +500,14 @@ function ChatPageContent() {
   )
 }
 
-export default function ChatPage() {
+export default function ChatPageRefactored() {
   return (
     <Suspense fallback={
       <div className="h-full flex items-center justify-center bg-[#212121]">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     }>
-      <ChatPageContent />
+      <ChatPageContentRefactored />
     </Suspense>
   )
 }

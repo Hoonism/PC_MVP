@@ -3,6 +3,7 @@ import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Navbar } from '@/components/Navbar'
+import { NotificationToast } from '@/components/NotificationToast'
 
 export const metadata: Metadata = {
   title: 'BillReduce AI - Medical Bill Negotiation & Pregnancy Storybook',
@@ -57,6 +58,7 @@ export default function RootLayout({
               <Navbar />
               <main className="flex-1 overflow-y-auto">{children}</main>
             </div>
+            <NotificationToast />
           </AuthProvider>
         </ThemeProvider>
       </body>
