@@ -4,6 +4,8 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Navbar } from '@/components/Navbar'
 import { NotificationToast } from '@/components/NotificationToast'
+import { OfflineIndicator } from '@/components/OfflineIndicator'
+import { MonitoringProvider } from '@/components/MonitoringProvider'
 
 export const metadata: Metadata = {
   title: 'BillReduce AI - Medical Bill Negotiation & Pregnancy Storybook',
@@ -52,15 +54,18 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <AuthProvider>
-            <div className="flex flex-col h-screen">
-              <Navbar />
-              <main className="flex-1 overflow-y-auto">{children}</main>
-            </div>
-            <NotificationToast />
-          </AuthProvider>
-        </ThemeProvider>
+        <MonitoringProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <AuthProvider>
+              <OfflineIndicator />
+              <div className="flex flex-col h-screen">
+                <Navbar />
+                <main className="flex-1 overflow-y-auto">{children}</main>
+              </div>
+              <NotificationToast />
+            </AuthProvider>
+          </ThemeProvider>
+        </MonitoringProvider>
       </body>
     </html>
   )
