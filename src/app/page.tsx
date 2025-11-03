@@ -19,19 +19,24 @@ export default function Home() {
   }, [user, loading, router])
 
   if (loading) {
-    return null // or a loading spinner
+    return (
+      <div className="flex items-center justify-center h-screen" role="status" aria-label="Loading">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <span className="sr-only">Loading...</span>
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col overflow-y-auto">
+    <div className="flex flex-col overflow-y-auto" role="main">
       {/* Hero Section */}
-      <section className="py-20 px-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
+      <section className="py-20 px-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800" aria-labelledby="hero-heading">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-sm text-blue-700 dark:text-blue-300 font-medium mb-6">
             <Sparkles className="w-4 h-4" />
             AI-Powered Healthcare & Pregnancy Journey Platform
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+          <h1 id="hero-heading" className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-gray-100 mb-6">
             Your AI Assistant for
             <span className="block mt-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Medical Bills & Life Moments
@@ -45,13 +50,15 @@ export default function Home() {
             <button
               onClick={() => setShowAuthModal(true)}
               className="flex items-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-base shadow-lg hover:shadow-xl transition-all"
+              aria-label="Sign in to get started"
             >
-              <LogIn className="w-5 h-5" />
+              <LogIn className="w-5 h-5" aria-hidden="true" />
               Sign In to Get Started
             </button>
             <Link
               href="#features"
               className="px-8 py-4 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-500 text-gray-700 dark:text-gray-300 font-semibold rounded-lg text-base transition-all"
+              aria-label="Learn more about our features"
             >
               Learn More
             </Link>
@@ -60,10 +67,10 @@ export default function Home() {
       </section>
 
       {/* Main Features Section */}
-      <section id="features" className="py-16 px-6">
+      <section id="features" className="py-16 px-6" aria-labelledby="features-heading">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+            <h2 id="features-heading" className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               Two Powerful Features, One Platform
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
@@ -73,7 +80,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
             {/* Bill Negotiation Feature */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 border-2 border-blue-200 dark:border-blue-800 shadow-lg hover:shadow-xl transition-shadow">
+            <article className="bg-white dark:bg-gray-800 rounded-2xl p-8 border-2 border-blue-200 dark:border-blue-800 shadow-lg hover:shadow-xl transition-shadow">
               <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-6">
                 <MessageSquare className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               </div>
@@ -106,10 +113,10 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            </div>
+            </article>
 
             {/* Pregnancy Storybook Feature */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 border-2 border-purple-200 dark:border-purple-800 shadow-lg hover:shadow-xl transition-shadow">
+            <article className="bg-white dark:bg-gray-800 rounded-2xl p-8 border-2 border-purple-200 dark:border-purple-800 shadow-lg hover:shadow-xl transition-shadow">
               <div className="w-14 h-14 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-6">
                 <Book className="w-8 h-8 text-purple-600 dark:text-purple-400" />
               </div>
@@ -142,15 +149,15 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            </div>
+            </article>
           </div>
         </div>
       </section>
 
       {/* Why Choose Us Section */}
-      <section className="py-16 px-6 bg-gray-50 dark:bg-gray-800">
+      <section className="py-16 px-6 bg-gray-50 dark:bg-gray-800" aria-labelledby="benefits-heading">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100 mb-12">
+          <h2 id="benefits-heading" className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100 mb-12">
             Why Choose Our Platform?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -192,9 +199,9 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6 bg-gradient-to-r from-blue-600 to-purple-600">
+      <section className="py-20 px-6 bg-gradient-to-r from-blue-600 to-purple-600" aria-labelledby="cta-heading">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+          <h2 id="cta-heading" className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Ready to Get Started?
           </h2>
           <p className="text-lg text-blue-100 mb-8">
@@ -204,13 +211,15 @@ export default function Home() {
             <button
               onClick={() => setShowAuthModal(true)}
               className="flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-gray-100 text-blue-600 font-semibold rounded-lg text-base shadow-lg transition-all"
+              aria-label="Sign in now"
             >
-              <LogIn className="w-5 h-5" />
+              <LogIn className="w-5 h-5" aria-hidden="true" />
               Sign In Now
             </button>
             <button
               onClick={() => setShowAuthModal(true)}
               className="px-8 py-4 border-2 border-white hover:bg-white/10 text-white font-semibold rounded-lg text-base transition-all"
+              aria-label="Create free account"
             >
               Create Free Account
             </button>

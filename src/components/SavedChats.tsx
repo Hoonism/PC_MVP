@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, memo } from 'react'
 import { MessageSquare, Trash2, Loader2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getUserChats, deleteChat, ChatSession } from '@/services/chatService'
@@ -10,13 +10,13 @@ interface SavedChatsProps {
   currentChatId?: string
 }
 
-export default function SavedChats({ onLoadChat, currentChatId }: SavedChatsProps) {
+function SavedChats({ onLoadChat, currentChatId }: SavedChatsProps) {
   const { user } = useAuth()
   const [chats, setChats] = useState<ChatSession[]>([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const loadChats = async () => {
+  const loadChats = useCallback(async () => {
     if (!user) {
       setChats([])
       setLoading(false)
@@ -25,26 +25,21 @@ export default function SavedChats({ onLoadChat, currentChatId }: SavedChatsProp
 
     try {
       setLoading(true)
-      console.log('Loading chats for user:', user.uid)
       const userChats = await getUserChats(user.uid)
-      console.log('Loaded chats:', userChats.length, userChats)
       setChats(userChats)
     } catch (error) {
       console.error('Error loading chats:', error)
-      if (error instanceof Error) {
-        console.error('Error details:', error.message, error.stack)
-      }
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
 
   useEffect(() => {
     loadChats()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  const handleDelete = async (chatId: string, e: React.MouseEvent) => {
+  const handleDelete = useCallback(async (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!confirm('Are you sure you want to delete this chat?')) {
       return
@@ -60,7 +55,7 @@ export default function SavedChats({ onLoadChat, currentChatId }: SavedChatsProp
     } finally {
       setDeletingId(null)
     }
-  }
+  }, [chats])
 
   if (!user) {
     return (
@@ -87,7 +82,7 @@ export default function SavedChats({ onLoadChat, currentChatId }: SavedChatsProp
   }
 
   return (
-    <div className="space-y-1">
+    <nav className="space-y-1" aria-label="Saved chats">
       {chats.map((chat) => (
         <div
           key={chat.id}
@@ -121,6 +116,8 @@ export default function SavedChats({ onLoadChat, currentChatId }: SavedChatsProp
           </div>
         </div>
       ))}
-    </div>
+    </nav>
   )
 }
+
+export default memo(SavedChats)

@@ -15,11 +15,11 @@ export function Navbar() {
 
   return (
     <>
-      <nav className="bg-white dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
+      <nav className="bg-white dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700" role="navigation" aria-label="Main navigation">
         <div className="px-6">
           <div className="flex justify-between items-center h-14">
             <div className="flex items-center gap-6">
-              <Link href="/" className="flex items-center gap-2 hover:opacity-70">
+              <Link href="/" className="flex items-center gap-2 hover:opacity-70 transition-opacity" aria-label="BillReduce home">
                 <FileText className="w-5 h-5 text-blue-600 dark:text-blue-500" />
                 <span className="text-lg font-medium text-gray-900 dark:text-gray-100">
                   BillReduce
@@ -34,6 +34,7 @@ export function Navbar() {
                         ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
+                    aria-current={pathname === '/dashboard' ? 'page' : undefined}
                   >
                     <LayoutDashboard className="w-4 h-4" />
                     <span className="hidden sm:inline">Dashboard</span>
@@ -45,6 +46,7 @@ export function Navbar() {
                         ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
+                    aria-current={pathname === '/chat' ? 'page' : undefined}
                   >
                     <MessageSquare className="w-4 h-4" />
                     <span className="hidden sm:inline">Bill Chat</span>
@@ -56,6 +58,7 @@ export function Navbar() {
                         ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
+                    aria-current={pathname?.startsWith('/storybook') ? 'page' : undefined}
                   >
                     <Book className="w-4 h-4" />
                     <span className="hidden sm:inline">Storybook</span>
@@ -72,7 +75,8 @@ export function Navbar() {
                   </div>
                   <button
                     onClick={logout}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                    aria-label="Sign out"
                   >
                     <LogOut className="w-4 h-4" />
                     <span className="hidden sm:inline">Sign Out</span>
@@ -81,7 +85,8 @@ export function Navbar() {
               ) : (
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                  aria-label="Sign in"
                 >
                   <LogIn className="w-4 h-4" />
                   <span>Sign In</span>
