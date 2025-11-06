@@ -11,7 +11,7 @@ import {
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { ref, deleteObject } from 'firebase/storage'
 import { db, storage } from '@/lib/firebase'
 
 export interface StorybookData {

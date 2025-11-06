@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import StorybookCreate from '@/components/StorybookCreate'
+import { StorybookCreate } from '@/components/features/storybook'
 import { Loader2 } from 'lucide-react'
 
 function CreateStorybookContent() {

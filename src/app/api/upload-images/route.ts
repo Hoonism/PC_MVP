@@ -17,7 +17,8 @@ let app: FirebaseApp
 let storage: FirebaseStorage
 
 try {
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
+  const apps = getApps()
+  app = apps.length === 0 ? initializeApp(firebaseConfig) : (apps[0] as FirebaseApp)
   storage = getStorage(app)
 } catch (error) {
   console.error('Firebase initialization error:', error)

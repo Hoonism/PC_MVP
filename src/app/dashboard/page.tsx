@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageSquare, Plus, Trash2, Loader2, Clock, FileText, Book, Upload, Sparkles, Heart, Image, ArrowRight } from 'lucide-react'
+import { MessageSquare, Plus, Trash2, Loader2, FileText, Book, Image } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getUserChats, deleteChat, ChatSession } from '@/services/chatService'
 import { storybookService, StorybookData } from '@/services/storybookService'

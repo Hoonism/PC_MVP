@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { storybookService, StorybookData } from '@/services/storybookService'
-import { ArrowLeft, Loader2, Upload, X, Save, Download, Eye } from 'lucide-react'
+import { ArrowLeft, Loader2, Upload, X, Save } from 'lucide-react'
 
 interface StorybookCreateProps {
   storybookId?: string | null
@@ -208,7 +208,10 @@ export default function StorybookCreate({ storybookId }: StorybookCreateProps) {
   }
 
   const removeImage = (index: number) => {
-    URL.revokeObjectURL(imagesWithCaptions[index].preview)
+    const preview = imagesWithCaptions[index]?.preview
+    if (preview) {
+      URL.revokeObjectURL(preview)
+    }
     setFormData((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }))
     setImagesWithCaptions((prev) => prev.filter((_, i) => i !== index))
   }

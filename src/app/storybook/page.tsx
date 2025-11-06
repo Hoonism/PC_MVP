@@ -191,10 +191,10 @@ export default function StorybookDashboard() {
                 className="bg-white dark:bg-[#2f2f2f] rounded border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:border-purple-500 dark:hover:border-purple-500 transition-colors group"
               >
                 {/* Image Preview */}
-                {storybook.input?.images && storybook.input.images.length > 0 && (
+                {storybook.input?.images && storybook.input.images.length > 0 && storybook.input.images[0]?.url && (
                   <div className="mb-3 rounded overflow-hidden bg-gray-100 dark:bg-gray-700 h-40">
                     <img
-                      src={storybook.input.images[0].url}
+                      src={storybook.input.images[0]?.url || ''}
                       alt={storybook.name}
                       className="w-full h-full object-cover"
                       onError={(e) => {

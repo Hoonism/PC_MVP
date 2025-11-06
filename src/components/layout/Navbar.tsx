@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ThemeToggle } from './ThemeToggle'
+import { ThemeToggle } from '@/components/ui'
 import { FileText, LogIn, LogOut, User, LayoutDashboard, MessageSquare, Book } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import AuthModal from './AuthModal'
+import { AuthModal } from '@/components/features/auth'
 
 export function Navbar() {
   const { user, logout } = useAuth()

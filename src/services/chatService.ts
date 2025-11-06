@@ -181,6 +181,7 @@ export function generateChatTitle(messages: Message[]): string {
 
   const content = firstUserMessage.content
   // Take first 50 characters or until first newline
-  const title = content.split('\n')[0].substring(0, 50)
+  const firstLine = content.split('\n')[0] ?? ''
+  const title = firstLine.substring(0, 50)
   return title.length < content.length ? `${title}...` : title
 }

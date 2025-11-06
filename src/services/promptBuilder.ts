@@ -131,11 +131,7 @@ export function summarizeConversation(messages: Array<{ role: string; content: s
   }
 
   // Extract key information
-  const userMessages = messages.filter((m) => m.role === 'user')
-  const billMentions = messages.filter((m) => 
-    m.content.toLowerCase().includes('bill') || 
-    m.content.toLowerCase().includes('charge')
-  )
+  // Previously computed but unused filters removed to satisfy TS noUnusedLocals
 
   let summary = 'Previous conversation summary:\n'
   
@@ -189,8 +185,9 @@ export function extractBillMetadata(messages: Array<{ role: string; content: str
 
   for (const pattern of providerPatterns) {
     const match = allText.match(pattern)
-    if (match) {
-      metadata.provider = match[1].trim()
+    const captured = match?.[1]?.trim()
+    if (captured) {
+      metadata.provider = captured
       break
     }
   }

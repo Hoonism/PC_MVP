@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Upload, MessageSquare, FileCheck, Book, Image, Sparkles, Shield, Clock, Heart, LogIn } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import AuthModal from '@/components/AuthModal'
+import { AuthModal } from '@/components/features/auth'
 
 export default function Home() {
   const { user, loading } = useAuth()

@@ -14,12 +14,10 @@
 
 import { useState, useRef, useEffect, Suspense, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { Send, Loader2, Menu, X, Plus, FileText, Paperclip, Sparkles, LogOut, Sun, Moon, User, Settings, HelpCircle, ChevronRight, Shield } from 'lucide-react'
+import { Loader2, Menu, X, Plus, Sparkles, Paperclip, Send } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { saveChat, updateChat, generateChatTitle, ChatSession, getChat } from '@/services/chatService'
-import SavedChats from '@/components/SavedChats'
-import { useTheme } from 'next-themes'
+import { SavedChats } from '@/components/features/chat'
 import ReactMarkdown from 'react-markdown'
 
 // Zustand stores
@@ -53,8 +51,7 @@ const STARTER_PROMPTS = [
 ]
 
 function ChatPageContentRefactored() {
-  const { user, logout } = useAuth()
-  const { theme, setTheme } = useTheme()
+  const { user } = useAuth()
   const searchParams = useSearchParams()
   
   // Zustand stores - notice how clean this is!
@@ -75,9 +72,7 @@ function ChatPageContentRefactored() {
   
   const {
     sidebarOpen,
-    userMenuOpen,
     setSidebarOpen,
-    setUserMenuOpen,
   } = useUIStore()
   
   const { success, error: notifyError } = useNotificationStore()

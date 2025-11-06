@@ -45,6 +45,9 @@ export async function POST(request: NextRequest) {
       })
 
       const longestParagraph = paragraphs[longestIndex]
+      if (!longestParagraph) {
+        break
+      }
       const sentences = longestParagraph
         .split(/[.!?]+/)
         .map((s) => s.trim())
@@ -70,17 +73,21 @@ export async function POST(request: NextRequest) {
 
     while (paragraphs.length > imageCount && paragraphs.length > 1) {
       let shortestIndex = 0
-      let shortestLength = paragraphs[0].length
+      let shortestLength = paragraphs[0]?.length ?? 0
 
       for (let i = 0; i < paragraphs.length - 1; i++) {
-        const combinedLength = paragraphs[i].length + paragraphs[i + 1].length
+        const a = paragraphs[i]
+        const b = paragraphs[i + 1]
+        if (!a || !b) continue
+        const combinedLength = a.length + b.length
         if (combinedLength < shortestLength) {
           shortestLength = combinedLength
           shortestIndex = i
         }
       }
 
-      paragraphs[shortestIndex] = paragraphs[shortestIndex] + ' ' + paragraphs[shortestIndex + 1]
+      if (!paragraphs[shortestIndex + 1]) break
+      paragraphs[shortestIndex] = paragraphs[shortestIndex]! + ' ' + paragraphs[shortestIndex + 1]!
       paragraphs.splice(shortestIndex + 1, 1)
     }
 

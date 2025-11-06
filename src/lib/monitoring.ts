@@ -245,8 +245,8 @@ export function trackWebVitals(): void {
   }
 
   // Track Web Vitals using web-vitals library
-  import('web-vitals').then(({ onCLS, onFID, onFCP, onLCP, onTTFB }) => {
-    onCLS((metric) => {
+  import('web-vitals').then(({ onCLS, onINP, onFCP, onLCP, onTTFB }) => {
+    onCLS((metric: any) => {
       trackPerformance({
         name: 'CLS',
         value: metric.value,
@@ -255,16 +255,16 @@ export function trackWebVitals(): void {
       })
     })
 
-    onFID((metric) => {
+    onINP((metric: any) => {
       trackPerformance({
-        name: 'FID',
+        name: 'INP',
         value: metric.value,
         unit: 'ms',
         tags: { rating: metric.rating },
       })
     })
 
-    onFCP((metric) => {
+    onFCP((metric: any) => {
       trackPerformance({
         name: 'FCP',
         value: metric.value,
@@ -273,7 +273,7 @@ export function trackWebVitals(): void {
       })
     })
 
-    onLCP((metric) => {
+    onLCP((metric: any) => {
       trackPerformance({
         name: 'LCP',
         value: metric.value,
@@ -282,7 +282,7 @@ export function trackWebVitals(): void {
       })
     })
 
-    onTTFB((metric) => {
+    onTTFB((metric: any) => {
       trackPerformance({
         name: 'TTFB',
         value: metric.value,

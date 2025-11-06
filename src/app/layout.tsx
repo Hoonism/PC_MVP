@@ -1,11 +1,15 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import { ThemeProvider } from '@/components/ThemeProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
-import { Navbar } from '@/components/Navbar'
-import { NotificationToast } from '@/components/NotificationToast'
-import { OfflineIndicator } from '@/components/OfflineIndicator'
-import { MonitoringProvider } from '@/components/MonitoringProvider'
+import { 
+  ThemeProvider, 
+  MonitoringProvider 
+} from '@/components/providers'
+import { Navbar } from '@/components/layout'
+import { 
+  NotificationToast, 
+  OfflineIndicator 
+} from '@/components/ui'
 
 export const metadata: Metadata = {
   title: 'BillReduce AI - Medical Bill Negotiation & Pregnancy Storybook',
